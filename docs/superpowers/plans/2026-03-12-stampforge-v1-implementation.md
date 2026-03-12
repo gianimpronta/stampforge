@@ -1,12 +1,12 @@
-﻿# StampForge V1 Implementation Plan
+﻿# StampForge MVP Implementation Plan
 
 > **For agentic workers:** REQUIRED: Use superpowers:subagent-driven-development (if subagents available) or superpowers:executing-plans to implement this plan. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build the first working StampForge system: a containerized modular monolith with asynchronous stage execution, per-stage approval/rejection, image traceability, and a lightweight web UI for operating the pipeline.
+**Goal:** Build the StampForge MVP: a containerized system that runs the approved pipeline with real Gemini API integrations, manual per-stage control, approval/rejection gates, and image traceability.
 
-**Architecture:** Implement a modular monolith with clear domain boundaries around collections, design items, pipeline stages, stage executions, and generated images. Run the app and background worker as separate containers, persist domain state in PostgreSQL, queue work with Redis, and keep provider integrations behind explicit interfaces so one concrete implementation can be swapped later.
+**Architecture:** Implement a modular monolith with clear domain boundaries around collections, design items, pipeline stages, stage executions, and generated images. Run the app and background worker as separate containers, persist domain state in PostgreSQL, queue work with Redis, and integrate the real Gemini API behind explicit provider interfaces so the system remains replaceable later.
 
-**Tech Stack:** TypeScript, Node.js, Next.js, shadcn/ui, Tailwind CSS, PostgreSQL, Redis, Docker Compose, local file storage, Vitest, Playwright
+**Tech Stack:** TypeScript, Node.js, Next.js, shadcn/ui, Tailwind CSS, PostgreSQL, Redis, Docker Compose, Gemini API, local file storage, Vitest, Playwright
 
 ---
 
@@ -45,7 +45,7 @@ Proposed initial structure:
 - `src/infrastructure/db/*`
   Database client, migrations, and repository implementations.
 - `src/infrastructure/providers/*`
-  Concrete provider adapters and local development fakes.
+  Concrete Gemini API adapters.
 - `src/infrastructure/storage/*`
   Local disk-backed asset storage implementation.
 
@@ -58,15 +58,40 @@ Proposed initial structure:
 - `tests/e2e/*`
   End-to-end UI/API flow tests against the compose stack.
 
+## MVP Scope
+
+The MVP must deliver:
+
+- collection creation
+- design item creation
+- fixed 11-stage pipeline
+- manual per-stage execution
+- background jobs for execution
+- approval or rejection on every stage
+- master prompt assembly
+- real image generation through Gemini API
+- per-image traceability to the exact source execution
+- lightweight operational UI
+
+The MVP explicitly excludes:
+
+- multi-user support
+- authentication
+- analytics dashboards
+- automated pipeline progression
+- advanced creative editing
+- production-ready derivative exports
+- multi-provider orchestration
+
 ## Delivery Strategy
 
-Build the system in this order:
+Build the MVP in this order:
 
 1. Project/runtime scaffold
 2. Core domain model and pipeline rules
 3. Persistence and queue plumbing
 4. Stage execution use cases and worker flow
-5. Provider and storage interfaces with one concrete implementation each
+5. Gemini provider and storage integration
 6. Operational API
 7. Web UI
 8. End-to-end hardening
@@ -742,48 +767,55 @@ git add src/domain/providers tests/domain
 git commit -m "feat: add provider interfaces for text image and storage"
 ```
 
-### Task 13: Implement local storage and one concrete provider path
+### Task 13: Implement local storage and real Gemini provider adapters
 
 **Files:**
 - Create: `src/infrastructure/storage/LocalAssetStorage.ts`
-- Create: `src/infrastructure/providers/FakeLLMProvider.ts`
-- Create: `src/infrastructure/providers/FakeImageGenerationProvider.ts`
-- Create: `tests/integration/local-provider-flow.test.ts`
+- Create: `src/infrastructure/providers/GeminiTextProvider.ts`
+- Create: `src/infrastructure/providers/GeminiImageProvider.ts`
+- Create: `tests/integration/gemini-provider-config.test.ts`
 
-- [ ] **Step 1: Write the failing integration test**
+- [ ] **Step 1: Write the failing integration/configuration test**
 
 ```ts
 import { describe, expect, it } from "vitest";
 
-describe("local provider flow", () => {
-  it("stores a generated image and returns traceable metadata", async () => {
-    const result = await runFakeImageGenerationFlow();
-
-    expect(result.image.provider).toBe("fake-image");
-    expect(result.image.filePath).toContain("/assets/");
+describe("Gemini provider config", () => {
+  it("requires Gemini API configuration for text and image generation", async () => {
+    expect(() => makeGeminiProviders({
+      GEMINI_API_KEY: "",
+    })).toThrow();
   });
 });
 ```
 
 - [ ] **Step 2: Run the test**
 
-Run: `npm test -- tests/integration/local-provider-flow.test.ts`
-Expected: FAIL because fake providers and storage are missing
+Run: `npm test -- tests/integration/gemini-provider-config.test.ts`
+Expected: FAIL because Gemini providers and config helpers are missing
 
-- [ ] **Step 3: Implement the local adapters**
+- [ ] **Step 3: Implement the Gemini and storage adapters**
 
-Use deterministic fake providers first so the workflow can be tested end-to-end without external APIs.
+Implement:
+- `GeminiTextProvider` for structured text stages
+- `GeminiImageProvider` for real image generation
+- `LocalAssetStorage` for persisted generated files
+
+Use environment-driven model selection, for example:
+- `GEMINI_API_KEY`
+- `GEMINI_TEXT_MODEL`
+- `GEMINI_IMAGE_MODEL`
 
 - [ ] **Step 4: Run the test**
 
-Run: `npm test -- tests/integration/local-provider-flow.test.ts`
+Run: `npm test -- tests/integration/gemini-provider-config.test.ts`
 Expected: PASS
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add src/infrastructure tests/integration
-git commit -m "feat: add local storage and fake providers for development"
+git commit -m "feat: add gemini api providers and local asset storage"
 ```
 
 ## Chunk 7: Application Use Cases and API
@@ -1079,7 +1111,7 @@ git commit -m "feat: add image gallery and execution traceability ui"
 
 ## Chunk 9: End-to-End Hardening
 
-### Task 20: Cover the full compose-based flow
+### Task 20: Cover the full MVP compose-based flow
 
 **Files:**
 - Create: `tests/e2e/full-pipeline.spec.ts`
@@ -1110,6 +1142,7 @@ Verify:
 - worker can connect to redis
 - stage trigger creates jobs
 - worker updates execution status
+- Gemini provider configuration is loaded correctly
 - generated images are stored and listed
 
 - [ ] **Step 4: Run full test suite**
@@ -1138,7 +1171,9 @@ git commit -m "feat: wire full stampforge v1 pipeline flow"
 
 ## Notes for Execution
 
-- Prefer fake providers first so the pipeline can be completed and tested without external dependencies.
+- Use the real Gemini API in the MVP implementation path.
+- Keep Gemini integration behind `LLMProvider` and `ImageGenerationProvider`.
+- For automated tests, prefer narrow unit and integration tests that do not depend on live API calls unless the test is explicitly marked for that purpose.
 - Do not collapse `PipelineStage` and `StageExecution`.
 - Do not allow downstream progression based on `completed`; require `approved`.
 - Keep snapshots immutable once an execution is stored.
