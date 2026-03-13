@@ -95,8 +95,10 @@ export async function runStageExecution(
       systemPrompt: promptConfig.systemPrompt,
     });
 
+    const cleanedContent = stripCodeFences(response.content);
+
     const completed = execution.complete({
-      content: response.content,
+      content: cleanedContent,
       provider: response.provider,
       model: response.model,
       usage: response.usage ?? null,
@@ -172,5 +174,16 @@ async function buildInputSnapshot({
   }
 
   return snapshot;
+}
+
+/**
+ * Remove blocos de código markdown (```json ... ```) que o LLM
+ * pode retornar mesmo quando instruído a não usar markdown.
+ */
+export function stripCodeFences(text: string): string {
+  const trimmed = text.trim();
+  const fencePattern = /^```(?:json)?\s*\n?([\s\S]*?)\n?\s*```$/;
+  const match = trimmed.match(fencePattern);
+  return match ? match[1].trim() : trimmed;
 }
 

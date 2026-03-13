@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runStageExecution } from "../../src/application/runStageExecution";
+import { runStageExecution, stripCodeFences } from "../../src/application/runStageExecution";
 import { InMemoryStageExecutionRepository } from "../../src/infrastructure/db/repositories/InMemoryStageExecutionRepository";
 import { InMemoryCollectionRepository } from "../../src/infrastructure/db/repositories/InMemoryCollectionRepository";
 import { InMemoryDesignItemRepository } from "../../src/infrastructure/db/repositories/InMemoryDesignItemRepository";
@@ -232,5 +232,27 @@ describe("runStageExecution", () => {
     expect(capturedPrompt).toContain("Mega Man Mania");
     expect(capturedPrompt).toContain("Coleção retrô de Mega Man com pixel art.");
     expect(capturedPrompt).toContain("collectionName");
+  });
+});
+
+describe("stripCodeFences", () => {
+  it("remove blocos ```json ... ```", () => {
+    const input = '```json\n{"key": "value"}\n```';
+    expect(stripCodeFences(input)).toBe('{"key": "value"}');
+  });
+
+  it("remove blocos ``` ... ``` sem linguagem", () => {
+    const input = '```\n{"key": "value"}\n```';
+    expect(stripCodeFences(input)).toBe('{"key": "value"}');
+  });
+
+  it("retorna texto limpo se não houver fences", () => {
+    const input = '{"key": "value"}';
+    expect(stripCodeFences(input)).toBe('{"key": "value"}');
+  });
+
+  it("preserva conteúdo interno com múltiplas linhas", () => {
+    const input = '```json\n{\n  "a": 1,\n  "b": 2\n}\n```';
+    expect(stripCodeFences(input)).toBe('{\n  "a": 1,\n  "b": 2\n}');
   });
 });
