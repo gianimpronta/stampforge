@@ -7,6 +7,7 @@ import type { DesignItemRepository } from "../domain/design-items/DesignItemRepo
 import type { LLMProvider } from "../domain/providers/LLMProvider";
 import { stageCatalog } from "../domain/pipeline/stageCatalog";
 import { isStageReady } from "../domain/pipeline/stageEligibility";
+import { getStagePromptConfig } from "../domain/pipeline/stagePrompts";
 
 export interface RunStageExecutionDeps {
   executionRepo: StageExecutionRepository;
@@ -87,8 +88,12 @@ export async function runStageExecution(
 
   // 7. Chama o LLM e transiciona para "completed" ou "failed"
   try {
-    const prompt = buildPrompt({ stageKey, inputSnapshot });
-    const response = await llm.generateText({ prompt });
+    const promptConfig = getStagePromptConfig(stageKey);
+    const userPrompt = promptConfig.buildUserPrompt(inputSnapshot);
+    const response = await llm.generateText({
+      prompt: userPrompt,
+      systemPrompt: promptConfig.systemPrompt,
+    });
 
     const completed = execution.complete({
       content: response.content,
@@ -169,14 +174,3 @@ async function buildInputSnapshot({
   return snapshot;
 }
 
-function buildPrompt(input: {
-  stageKey: string;
-  inputSnapshot: Record<string, unknown>;
-}): string {
-  return (
-    `Você é um assistente especializado em criação de designs de camisetas temáticas.\n` +
-    `Estágio atual do pipeline: ${input.stageKey}\n\n` +
-    `Contexto de entrada:\n${JSON.stringify(input.inputSnapshot, null, 2)}\n\n` +
-    `Execute o estágio "${input.stageKey}" com base no contexto acima e retorne o resultado em formato JSON.`
-  );
-}

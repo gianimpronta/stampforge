@@ -172,4 +172,65 @@ describe("runStageExecution", () => {
 
     expect(capturedPrompt).toContain("game-selection");
   });
+
+  it("envia systemPrompt específico do estágio ao LLM", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+
+    let capturedSystemPrompt = "";
+    const llm: LLMProvider = {
+      async generateText(req): Promise<LLMResponse> {
+        capturedSystemPrompt = req.systemPrompt ?? "";
+        return { content: "resultado", provider: "fake", model: "fake-model" };
+      },
+    };
+
+    const collection = Collection.create({
+      id: "col-5",
+      name: "Coleção Sonic",
+      briefing: "Camisetas com tema Sonic.",
+    });
+    await collectionRepo.save(collection);
+
+    await runStageExecution({
+      stageKey: "collection-briefing",
+      targetId: "col-5",
+      deps: { executionRepo, collectionRepo, designItemRepo, llm },
+    });
+
+    expect(capturedSystemPrompt).toContain("collection-briefing");
+    expect(capturedSystemPrompt).toContain("JSON");
+  });
+
+  it("prompt do collection-briefing contém dados da coleção", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+
+    let capturedPrompt = "";
+    const llm: LLMProvider = {
+      async generateText(req): Promise<LLMResponse> {
+        capturedPrompt = req.prompt;
+        return { content: "resultado", provider: "fake", model: "fake-model" };
+      },
+    };
+
+    const collection = Collection.create({
+      id: "col-6",
+      name: "Mega Man Mania",
+      briefing: "Coleção retrô de Mega Man com pixel art.",
+    });
+    await collectionRepo.save(collection);
+
+    await runStageExecution({
+      stageKey: "collection-briefing",
+      targetId: "col-6",
+      deps: { executionRepo, collectionRepo, designItemRepo, llm },
+    });
+
+    expect(capturedPrompt).toContain("Mega Man Mania");
+    expect(capturedPrompt).toContain("Coleção retrô de Mega Man com pixel art.");
+    expect(capturedPrompt).toContain("collectionName");
+  });
 });
