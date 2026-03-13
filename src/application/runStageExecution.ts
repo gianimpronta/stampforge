@@ -47,7 +47,21 @@ export async function runStageExecution(
   }
 
   // 2. Coleta execuções aprovadas para o targetId
-  const allExecutions = await executionRepo.findByTargetId(targetId);
+  //    Para estágios de design_item, também busca execuções da collection
+  //    (pois dependências upstream podem ser de scope collection).
+  const targetExecutions = await executionRepo.findByTargetId(targetId);
+  let allExecutions = targetExecutions;
+
+  if (stage.scope === "design_item") {
+    const designItem = await designItemRepo.findById(targetId);
+    if (designItem) {
+      const collectionExecutions = await executionRepo.findByTargetId(
+        designItem.collectionId,
+      );
+      allExecutions = [...targetExecutions, ...collectionExecutions];
+    }
+  }
+
   const approvedStageKeys = allExecutions
     .filter((e) => e.status === "approved")
     .map((e) => e.stageKey);
