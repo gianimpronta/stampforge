@@ -56,25 +56,31 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
 
   const fetchData = useCallback(async () => {
     try {
-      const [catalogRes, timelineRes] = await Promise.all([
-        fetch("/api/pipeline/stages"),
-        fetch(`/api/pipeline/timeline/${designItemId}`),
-      ]);
+      const [catalogRes, itemTimelineRes, collectionTimelineRes] =
+        await Promise.all([
+          fetch("/api/pipeline/stages"),
+          fetch(`/api/pipeline/timeline/${designItemId}`),
+          fetch(`/api/pipeline/timeline/${collectionId}`),
+        ]);
 
       if (!catalogRes.ok) throw new Error("Falha ao carregar catálogo");
-      if (!timelineRes.ok) throw new Error("Falha ao carregar timeline");
+      if (!itemTimelineRes.ok) throw new Error("Falha ao carregar timeline do item");
+      if (!collectionTimelineRes.ok)
+        throw new Error("Falha ao carregar timeline da coleção");
 
       const catalogData: CatalogStage[] = await catalogRes.json();
-      const timelineData: StageExecutionData[] = await timelineRes.json();
+      const itemExecs: StageExecutionData[] = await itemTimelineRes.json();
+      const collectionExecs: StageExecutionData[] =
+        await collectionTimelineRes.json();
 
       setCatalog(catalogData.sort((a, b) => a.order - b.order));
-      setExecutions(timelineData);
+      setExecutions([...collectionExecs, ...itemExecs]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
       setLoading(false);
     }
-  }, [designItemId]);
+  }, [designItemId, collectionId]);
 
   useEffect(() => {
     fetchData();
@@ -107,13 +113,19 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
     return stage.dependencies.every((dep) => approved.has(dep));
   }
 
+  function getTargetIdForStage(stageKey: string): string {
+    const stage = catalog.find((s) => s.key === stageKey);
+    return stage?.scope === "collection" ? collectionId : designItemId;
+  }
+
   async function handleTrigger(stageKey: string) {
     setTriggering(stageKey);
     try {
+      const targetId = getTargetIdForStage(stageKey);
       const res = await fetch("/api/pipeline/trigger", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stageKey, targetId: designItemId }),
+        body: JSON.stringify({ stageKey, targetId }),
       });
       if (!res.ok) {
         const data = await res.json();
