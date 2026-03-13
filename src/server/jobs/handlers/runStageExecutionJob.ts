@@ -1,8 +1,11 @@
 import type { Job } from "bullmq";
 import { runStageExecution } from "../../../application/runStageExecution";
-import { InMemoryStageExecutionRepository } from "../../../infrastructure/db/repositories/InMemoryStageExecutionRepository";
-import { InMemoryCollectionRepository } from "../../../infrastructure/db/repositories/InMemoryCollectionRepository";
-import { InMemoryDesignItemRepository } from "../../../infrastructure/db/repositories/InMemoryDesignItemRepository";
+import {
+  stageExecutionRepo,
+  collectionRepo,
+  designItemRepo,
+} from "../../../lib/server/dependencies";
+import { createGeminiTextProvider } from "../../../infrastructure/providers/GeminiTextProvider";
 import type { LLMProvider } from "../../../domain/providers/LLMProvider";
 
 /**
@@ -13,19 +16,20 @@ export interface RunStageExecutionJobData {
   targetId: string;
 }
 
-/**
- * Stub de LLM provider para uso no MVP.
- * Será substituído por um provider real (OpenAI, Anthropic, etc.) no futuro.
- */
-function createStubLLMProvider(): LLMProvider {
+function getLLMProvider(): LLMProvider {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.GEMINI_TEXT_MODEL ?? "gemini-2.5-flash";
+
+  if (apiKey && apiKey !== "your-api-key-here") {
+    return createGeminiTextProvider({ apiKey, model });
+  }
+
   return {
     async generateText(request) {
-      console.log(`[LLM Stub] Prompt recebido para processamento:\n${request.prompt}\n`);
       return {
-        content: `[Stub] Resultado gerado para o estágio. Prompt: ${request.prompt.slice(0, 100)}...`,
+        content: `[stub] Resposta simulada para o prompt: ${request.prompt.slice(0, 100)}...`,
         provider: "stub",
-        model: "stub-v1",
-        usage: { inputTokens: 0, outputTokens: 0 },
+        model: "stub",
       };
     },
   };
@@ -54,20 +58,14 @@ export async function runStageExecutionJob(job: Job): Promise<void> {
 
   console.log(`[Worker] Iniciando execução do estágio "${stageKey}" para targetId="${targetId}"`);
 
-  // TODO: substituir por repositórios Postgres quando a infra estiver disponível
-  const executionRepo = new InMemoryStageExecutionRepository();
-  const collectionRepo = new InMemoryCollectionRepository();
-  const designItemRepo = new InMemoryDesignItemRepository();
-  const llm = createStubLLMProvider();
-
   const execution = await runStageExecution({
     stageKey,
     targetId,
     deps: {
-      executionRepo,
+      executionRepo: stageExecutionRepo,
       collectionRepo,
       designItemRepo,
-      llm,
+      llm: getLLMProvider(),
     },
   });
 
