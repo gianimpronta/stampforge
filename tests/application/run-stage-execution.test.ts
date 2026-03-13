@@ -233,6 +233,20 @@ describe("runStageExecution", () => {
     expect(capturedPrompt).toContain("Coleção retrô de Mega Man com pixel art.");
     expect(capturedPrompt).toContain("collectionName");
   });
+  it("lança erro se a coleção não existe no repositório", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+    const llm = makeFakeLLMProvider("qualquer");
+
+    await expect(
+      runStageExecution({
+        stageKey: "collection-briefing",
+        targetId: "id-inexistente",
+        deps: { executionRepo, collectionRepo, designItemRepo, llm },
+      }),
+    ).rejects.toThrow(/not found/i);
+  });
 });
 
 describe("stripCodeFences", () => {

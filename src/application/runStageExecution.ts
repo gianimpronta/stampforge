@@ -137,25 +137,31 @@ async function buildInputSnapshot({
 }: BuildInputSnapshotInput): Promise<Record<string, unknown>> {
   const snapshot: Record<string, unknown> = { stageKey, targetId };
 
-  // Inclui dados do alvo
+  // Inclui dados do alvo — falha se não encontrar
   if (targetType === "collection") {
     const collection = await collectionRepo.findById(targetId);
-    if (collection) {
-      snapshot.collection = {
-        id: collection.id,
-        name: collection.name,
-        briefing: collection.briefing,
-      };
+    if (!collection) {
+      throw new Error(
+        `Collection not found: "${targetId}". O servidor pode ter reiniciado e perdido os dados in-memory.`,
+      );
     }
+    snapshot.collection = {
+      id: collection.id,
+      name: collection.name,
+      briefing: collection.briefing,
+    };
   } else {
     const designItem = await designItemRepo.findById(targetId);
-    if (designItem) {
-      snapshot.designItem = {
-        id: designItem.id,
-        name: designItem.name,
-        collectionId: designItem.collectionId,
-      };
+    if (!designItem) {
+      throw new Error(
+        `DesignItem not found: "${targetId}". O servidor pode ter reiniciado e perdido os dados in-memory.`,
+      );
     }
+    snapshot.designItem = {
+      id: designItem.id,
+      name: designItem.name,
+      collectionId: designItem.collectionId,
+    };
   }
 
   // Inclui outputs das dependências aprovadas
