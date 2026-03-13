@@ -3,39 +3,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ImageGallery } from "@/components/stampforge/ImageGallery";
+import { designItemRepo } from "@/lib/server/dependencies";
 
 interface ImagesPageProps {
   params: Promise<{ collectionId: string; designItemId: string }>;
 }
 
-interface DesignItemData {
-  id: string;
-  collectionId: string;
-  name: string;
-  createdAt: string;
-}
-
-async function fetchDesignItem(
-  collectionId: string,
-  designItemId: string,
-): Promise<DesignItemData | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const res = await fetch(
-      `${baseUrl}/api/collections/${collectionId}/design-items/${designItemId}`,
-      { cache: "no-store" },
-    );
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error("Erro ao carregar item de design");
-    return res.json();
-  } catch {
-    return null;
-  }
-}
-
 export default async function ImagesPage({ params }: ImagesPageProps) {
   const { collectionId, designItemId } = await params;
-  const designItem = await fetchDesignItem(collectionId, designItemId);
+  const designItem = await designItemRepo.findById(designItemId);
 
   if (!designItem) {
     notFound();

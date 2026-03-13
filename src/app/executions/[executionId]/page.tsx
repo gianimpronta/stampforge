@@ -1,36 +1,19 @@
 import { notFound } from "next/navigation";
 import {
   ExecutionDetail,
-  type ExecutionDetailData,
 } from "@/components/stampforge/ExecutionDetail";
 import { BackButton } from "@/components/stampforge/BackButton";
+import { stageExecutionRepo } from "@/lib/server/dependencies";
 
 interface ExecutionDetailPageProps {
   params: Promise<{ executionId: string }>;
-}
-
-async function fetchExecution(
-  executionId: string,
-): Promise<ExecutionDetailData | null> {
-  try {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const res = await fetch(
-      `${baseUrl}/api/pipeline/executions/${executionId}`,
-      { cache: "no-store" },
-    );
-    if (res.status === 404) return null;
-    if (!res.ok) throw new Error("Erro ao carregar execução");
-    return res.json();
-  } catch {
-    return null;
-  }
 }
 
 export default async function ExecutionDetailPage({
   params,
 }: ExecutionDetailPageProps) {
   const { executionId } = await params;
-  const execution = await fetchExecution(executionId);
+  const execution = await stageExecutionRepo.findById(executionId);
 
   if (!execution) {
     notFound();
