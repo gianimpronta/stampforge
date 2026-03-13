@@ -10,6 +10,8 @@
     "worker": "tsx src/server/jobs/worker.ts",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "vitest run tests/integration",
+    "migrate": "tsx src/infrastructure/db/migrate.ts",
     "ui:add": "npx shadcn@latest add"
   },
   "dependencies": {

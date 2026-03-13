@@ -1,4 +1,13 @@
 services:
+  migrate:
+    build: .
+    command: npm run migrate
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   app:
     build: .
     command: npm run dev
@@ -10,6 +19,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - ./src:/app/src
       - assets:/app/assets

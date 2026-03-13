@@ -10,7 +10,7 @@ describe("runtime config", () => {
     const config = loadRuntimeConfig({
       DATABASE_URL: "postgresql://localhost:5432/stampforge",
       REDIS_URL: "redis://localhost:6379",
-    } as NodeJS.ProcessEnv);
+    } as unknown as NodeJS.ProcessEnv);
 
     expect(config.databaseUrl).toBe("postgresql://localhost:5432/stampforge");
     expect(config.redisUrl).toBe("redis://localhost:6379");
@@ -20,7 +20,7 @@ describe("runtime config", () => {
     expect(() =>
       loadRuntimeConfig({
         REDIS_URL: "redis://localhost:6379",
-      } as NodeJS.ProcessEnv)
+      } as unknown as NodeJS.ProcessEnv)
     ).toThrow("Missing runtime configuration");
   });
 
@@ -28,7 +28,7 @@ describe("runtime config", () => {
     expect(() =>
       loadRuntimeConfig({
         DATABASE_URL: "postgresql://localhost:5432/stampforge",
-      } as NodeJS.ProcessEnv)
+      } as unknown as NodeJS.ProcessEnv)
     ).toThrow("Missing runtime configuration");
   });
 });
