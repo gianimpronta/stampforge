@@ -5,13 +5,30 @@ import {
   collectionRepo,
   designItemRepo,
 } from "../../../../lib/server/dependencies";
+import { createGeminiTextProvider } from "../../../../infrastructure/providers/GeminiTextProvider";
+import type { LLMProvider } from "../../../../domain/providers/LLMProvider";
+
+function getLLMProvider(): LLMProvider {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.GEMINI_TEXT_MODEL ?? "gemini-2.5-flash";
+
+  if (apiKey && apiKey !== "your-api-key-here") {
+    return createGeminiTextProvider({ apiKey, model });
+  }
+
+  // Fallback stub quando não há chave configurada
+  return {
+    generateText: async (input) => ({
+      content: `[stub] Resposta simulada para o prompt: ${input.prompt.slice(0, 100)}...`,
+      provider: "stub",
+      model: "stub",
+    }),
+  };
+}
 
 /**
  * POST /api/pipeline/trigger
  * Body: { stageKey: string, targetId: string }
- *
- * Executa um estágio do pipeline diretamente (sem fila, para V1).
- * Requer que as dependências upstream estejam aprovadas.
  */
 export async function POST(request: NextRequest) {
   let body: unknown;
@@ -38,14 +55,7 @@ export async function POST(request: NextRequest) {
         executionRepo: stageExecutionRepo,
         collectionRepo,
         designItemRepo,
-        // LLM provider is not wired in V1 for in-process execution; using a no-op stub.
-        llm: {
-          generateText: async (_input) => ({
-            content: `[stub] stage ${stageKey} executed for target ${targetId}`,
-            provider: "stub",
-            model: "stub",
-          }),
-        },
+        llm: getLLMProvider(),
       },
     });
 

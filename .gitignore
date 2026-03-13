@@ -5,3 +5,5 @@ dist/
 *.tsbuildinfo
 next-env.d.ts
 assets/
+coverage/
+test-results/
