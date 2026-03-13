@@ -27,6 +27,14 @@ export class Collection {
     this.updatedAt = props.updatedAt;
   }
 
+  /**
+   * Reconstitutes a Collection from a persistence snapshot.
+   * Bypasses validation — only use when loading from a trusted data store.
+   */
+  static reconstruct(props: CollectionProps): Collection {
+    return new Collection(props);
+  }
+
   static create(input: CreateCollectionInput): Collection {
     if (!input.id || input.id.trim() === "") {
       throw new Error("Collection id is required");

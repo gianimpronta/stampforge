@@ -74,6 +74,14 @@ export class StageExecution {
   }
 
   /**
+   * Reconstitutes a StageExecution from a persistence snapshot.
+   * Bypasses validation — only use when loading from a trusted data store.
+   */
+  static reconstruct(props: StageExecutionProps): StageExecution {
+    return new StageExecution(props);
+  }
+
+  /**
    * Creates a new execution record for a stage.
    * Status begins as "running" — it is not yet complete, approved, or rejected.
    */

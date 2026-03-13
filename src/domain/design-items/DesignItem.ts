@@ -27,6 +27,14 @@ export class DesignItem {
     this.updatedAt = props.updatedAt;
   }
 
+  /**
+   * Reconstitutes a DesignItem from a persistence snapshot.
+   * Bypasses validation — only use when loading from a trusted data store.
+   */
+  static reconstruct(props: DesignItemProps): DesignItem {
+    return new DesignItem(props);
+  }
+
   static create(input: CreateDesignItemInput): DesignItem {
     if (!input.id || input.id.trim() === "") {
       throw new Error("DesignItem id is required");
