@@ -2,9 +2,9 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PipelineTimeline } from "@/components/stampforge/PipelineTimeline";
+import { ImageGallery } from "@/components/stampforge/ImageGallery";
 
-interface PipelinePageProps {
+interface ImagesPageProps {
   params: Promise<{ collectionId: string; designItemId: string }>;
 }
 
@@ -33,7 +33,7 @@ async function fetchDesignItem(
   }
 }
 
-export default async function PipelinePage({ params }: PipelinePageProps) {
+export default async function ImagesPage({ params }: ImagesPageProps) {
   const { collectionId, designItemId } = await params;
   const designItem = await fetchDesignItem(collectionId, designItemId);
 
@@ -42,23 +42,25 @@ export default async function PipelinePage({ params }: PipelinePageProps) {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6">
-        <Link href={`/collections/${collectionId}`}>
+        <Link href={`/collections/${collectionId}/items/${designItemId}/pipeline`}>
           <Button variant="ghost" size="sm" className="-ml-2 mb-4">
-            ← Coleção
+            ← Pipeline
           </Button>
         </Link>
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">{designItem.name}</h1>
-            <p className="text-muted-foreground mt-1 text-sm">Pipeline de produção</p>
+            <h1 className="text-2xl font-bold">Imagens Geradas</h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {designItem.name}
+            </p>
           </div>
           <Badge variant="secondary">Item de Design</Badge>
         </div>
       </div>
 
-      <PipelineTimeline designItemId={designItemId} collectionId={collectionId} />
+      <ImageGallery designItemId={designItemId} collectionId={collectionId} />
     </main>
   );
 }

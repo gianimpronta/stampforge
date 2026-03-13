@@ -156,13 +156,22 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
                   {new Date(item.createdAt).toLocaleDateString("pt-BR")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <Link
-                    href={`/collections/${collectionId}/items/${item.id}/pipeline`}
-                  >
-                    <Button variant="outline" size="sm">
-                      Ver Pipeline
-                    </Button>
-                  </Link>
+                  <div className="flex justify-end gap-2">
+                    <Link
+                      href={`/collections/${collectionId}/items/${item.id}/pipeline`}
+                    >
+                      <Button variant="outline" size="sm">
+                        Ver Pipeline
+                      </Button>
+                    </Link>
+                    <Link
+                      href={`/collections/${collectionId}/items/${item.id}/images`}
+                    >
+                      <Button variant="outline" size="sm">
+                        Imagens
+                      </Button>
+                    </Link>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

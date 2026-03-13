@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,7 @@ interface CatalogStage {
 
 interface PipelineTimelineProps {
   designItemId: string;
+  collectionId: string;
 }
 
 const STATUS_LABELS: Record<StageExecutionStatus, string> = {
@@ -41,7 +43,7 @@ const STATUS_VARIANTS: Record<
   failed: "destructive",
 };
 
-export function PipelineTimeline({ designItemId }: PipelineTimelineProps) {
+export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelineProps) {
   const [catalog, setCatalog] = useState<CatalogStage[]>([]);
   const [executions, setExecutions] = useState<StageExecutionData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -181,16 +183,34 @@ export function PipelineTimeline({ designItemId }: PipelineTimelineProps) {
                       {STATUS_LABELS[execution!.status]}
                     </Badge>
                     {!isRunning && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOpenPanel(execution!, stage.name)
-                        }
-                      >
-                        Detalhes
-                      </Button>
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleOpenPanel(execution!, stage.name)
+                          }
+                        >
+                          Detalhes
+                        </Button>
+                        <Link href={`/executions/${execution!.id}`}>
+                          <Button variant="ghost" size="sm">
+                            Ver execução
+                          </Button>
+                        </Link>
+                      </>
                     )}
+                    {stage.key === "visual-variation-generation" &&
+                      (execution!.status === "completed" ||
+                        execution!.status === "approved") && (
+                        <Link
+                          href={`/collections/${collectionId}/items/${designItemId}/images`}
+                        >
+                          <Button variant="outline" size="sm">
+                            Imagens
+                          </Button>
+                        </Link>
+                      )}
                     {(execution!.status === "completed" ||
                       execution!.status === "approved") && (
                       <Button
