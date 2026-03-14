@@ -64,6 +64,134 @@ const STATUS_VARIANTS: Record<
   failed: "destructive",
 };
 
+function parseContent(output: Record<string, unknown>): Record<string, unknown> | null {
+  const content = output.content;
+  if (typeof content !== "string") return null;
+  try {
+    return JSON.parse(content) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function formatLabel(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/[_-]/g, " ")
+    .replace(/^\w/, (c) => c.toUpperCase())
+    .trim();
+}
+
+function ValueRenderer({ value }: { value: unknown }) {
+  if (value === null || value === undefined) {
+    return <span className="text-muted-foreground italic">—</span>;
+  }
+
+  if (typeof value === "boolean") {
+    return <span>{value ? "Sim" : "Não"}</span>;
+  }
+
+  if (typeof value === "number") {
+    return <span className="font-mono">{value}</span>;
+  }
+
+  if (typeof value === "string") {
+    return <span>{value}</span>;
+  }
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-muted-foreground italic">Nenhum</span>;
+
+    if (typeof value[0] === "string" || typeof value[0] === "number") {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {value.map((item, i) => (
+            <span key={i} className="bg-muted rounded px-2 py-0.5 text-xs">
+              {String(item)}
+            </span>
+          ))}
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-2">
+        {value.map((item, i) => (
+          <div key={i} className="bg-muted rounded-md p-2">
+            {typeof item === "object" && item !== null ? (
+              <ObjectRenderer data={item as Record<string, unknown>} />
+            ) : (
+              <span>{String(item)}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof value === "object") {
+    return <ObjectRenderer data={value as Record<string, unknown>} />;
+  }
+
+  return <span>{String(value)}</span>;
+}
+
+function ObjectRenderer({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="space-y-1">
+      {Object.entries(data).map(([key, val]) => (
+        <div key={key} className="text-xs">
+          <span className="text-muted-foreground font-medium">{formatLabel(key)}: </span>
+          <ValueRenderer value={val} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function OutputDisplay({ output }: { output: Record<string, unknown> }) {
+  const parsed = parseContent(output);
+  const provider = output.provider as string | undefined;
+  const model = output.model as string | undefined;
+  const usage = output.usage as { inputTokens?: number; outputTokens?: number } | undefined;
+
+  return (
+    <div className="space-y-3">
+      {provider && (
+        <div className="flex flex-wrap gap-3 text-xs">
+          {model && (
+            <span className="text-muted-foreground">
+              Modelo: <span className="font-mono">{model}</span>
+            </span>
+          )}
+          {usage && (
+            <span className="text-muted-foreground">
+              Tokens: {usage.inputTokens ?? 0} in / {usage.outputTokens ?? 0} out
+            </span>
+          )}
+        </div>
+      )}
+
+      {parsed ? (
+        <div className="bg-muted space-y-3 rounded-md p-3">
+          {Object.entries(parsed).map(([key, val]) => (
+            <div key={key}>
+              <p className="mb-1 text-xs font-semibold">{formatLabel(key)}</p>
+              <div className="text-sm">
+                <ValueRenderer value={val} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
+          {typeof output.content === "string" ? output.content : JSON.stringify(output, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 export function StageExecutionPanel({
   execution,
   stageName,
@@ -202,23 +330,21 @@ export function StageExecutionPanel({
             </div>
           )}
 
-          <div>
-            <p className="text-muted-foreground mb-1 font-medium">
-              Snapshot de entrada
-            </p>
-            <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
+          <details className="text-xs">
+            <summary className="text-muted-foreground cursor-pointer font-medium">
+              Snapshot de entrada (técnico)
+            </summary>
+            <pre className="bg-muted mt-1 overflow-x-auto rounded-md p-3">
               {JSON.stringify(execution.inputSnapshot, null, 2)}
             </pre>
-          </div>
+          </details>
 
           {execution.outputSnapshot !== null && (
             <div>
               <p className="text-muted-foreground mb-1 font-medium">
-                Snapshot de saída
+                Resultado
               </p>
-              <pre className="bg-muted overflow-x-auto rounded-md p-3 text-xs">
-                {JSON.stringify(execution.outputSnapshot, null, 2)}
-              </pre>
+              <OutputDisplay output={execution.outputSnapshot} />
             </div>
           )}
 
