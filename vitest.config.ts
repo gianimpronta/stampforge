@@ -5,7 +5,7 @@ export default defineConfig({
     exclude: ["tests/e2e/**", "node_modules/**"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "json-summary"],
+      reporter: ["text", "html", "json-summary", "lcov"],
       include: [
         "src/domain/**",
         "src/application/**",

@@ -32,6 +32,8 @@
     "uuid": "^13.0.0"
   },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4.0.14",
     "@types/node": "^25.5.0",
