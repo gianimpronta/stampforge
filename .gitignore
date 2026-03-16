@@ -4,6 +4,6 @@ dist/
 .env
 *.tsbuildinfo
 next-env.d.ts
-assets/
+/storage/assets/
 coverage/
 test-results/

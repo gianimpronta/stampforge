@@ -40,11 +40,14 @@ export function createGeminiImageProvider(
         },
       };
 
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:predict?key=${config.apiKey}`;
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.model}:predict`;
 
       const res = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": config.apiKey,
+        },
         body: JSON.stringify(body),
       });
 

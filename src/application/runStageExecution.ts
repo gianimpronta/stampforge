@@ -5,6 +5,10 @@ import type { StageExecutionRepository } from "../domain/pipeline/StageExecution
 import type { CollectionRepository } from "../domain/collections/CollectionRepository";
 import type { DesignItemRepository } from "../domain/design-items/DesignItemRepository";
 import type { LLMProvider } from "../domain/providers/LLMProvider";
+import type { ImageGenerationProvider } from "../domain/providers/ImageGenerationProvider";
+import type { AssetStorage } from "../domain/providers/AssetStorage";
+import type { GeneratedImageRepository } from "../domain/generation/GeneratedImageRepository";
+import { GeneratedImage } from "../domain/generation/GeneratedImage";
 import { stageCatalog } from "../domain/pipeline/stageCatalog";
 import { isStageReady } from "../domain/pipeline/stageEligibility";
 import { getStagePromptConfig } from "../domain/pipeline/stagePrompts";
@@ -14,6 +18,9 @@ export interface RunStageExecutionDeps {
   collectionRepo: CollectionRepository;
   designItemRepo: DesignItemRepository;
   llm: LLMProvider;
+  imageProvider?: ImageGenerationProvider;
+  storage?: AssetStorage;
+  generatedImageRepo?: GeneratedImageRepository;
 }
 
 export interface RunStageExecutionInput {
@@ -100,9 +107,19 @@ export async function runStageExecution(
 
   await executionRepo.save(execution);
 
-  // 7. Chama o LLM e transiciona para "completed" ou "failed"
+  // 7. Chama o LLM (ou image provider) e transiciona para "completed" ou "failed"
+  const promptConfig = getStagePromptConfig(stageKey);
+
+  if (promptConfig.isImageGeneration) {
+    return runImageGeneration({
+      execution,
+      inputSnapshot,
+      targetId,
+      deps,
+    });
+  }
+
   try {
-    const promptConfig = getStagePromptConfig(stageKey);
     const userPrompt = promptConfig.buildUserPrompt(inputSnapshot);
     const response = await llm.generateText({
       prompt: userPrompt,
@@ -131,6 +148,100 @@ export async function runStageExecution(
 // ---------------------------------------------------------------------------
 // Helpers internos
 // ---------------------------------------------------------------------------
+
+interface RunImageGenerationInput {
+  execution: StageExecution;
+  inputSnapshot: Record<string, unknown>;
+  targetId: string;
+  deps: RunStageExecutionDeps;
+}
+
+async function runImageGeneration({
+  execution,
+  inputSnapshot,
+  targetId,
+  deps,
+}: RunImageGenerationInput): Promise<StageExecution> {
+  const { executionRepo, imageProvider, storage, generatedImageRepo } = deps;
+
+  if (!imageProvider || !storage || !generatedImageRepo) {
+    const failed = execution.fail(
+      new Error("Image generation dependencies (imageProvider, storage, generatedImageRepo) are required"),
+    );
+    await executionRepo.save(failed);
+    return failed;
+  }
+
+  try {
+    // Extrai o prompt mestre do upstream
+    const upstream = inputSnapshot.upstreamOutputs as
+      | Record<string, { content?: string }>
+      | undefined;
+    const masterContent = upstream?.["master-prompt-assembly"]?.content ?? "";
+    let masterPrompt = "Generate a t-shirt design";
+
+    try {
+      const parsed = JSON.parse(masterContent);
+      masterPrompt = parsed.masterPrompt ?? parsed.prompt ?? masterContent;
+    } catch {
+      if (masterContent) masterPrompt = masterContent;
+    }
+
+    const response = await imageProvider.generateImages({
+      prompt: masterPrompt,
+      count: 2,
+    });
+
+    const savedImages: Array<{ imageId: string; filePath: string; provider: string; model: string }> = [];
+
+    for (let i = 0; i < response.images.length; i++) {
+      const { data, mimeType } = response.images[i];
+      const imageId = randomUUID();
+      const ext = mimeType.split("/")[1] ?? "png";
+      const filePath = `items/${targetId}/variations/${imageId}.${ext}`;
+
+      await storage.save(filePath, data, mimeType);
+
+      const image = GeneratedImage.create({
+        id: imageId,
+        designItemId: targetId,
+        sourceExecutionId: execution.id,
+        filePath,
+        promptUsed: masterPrompt,
+        provider: response.provider,
+        model: response.model,
+        metadata: { index: i, mimeType },
+        status: "ready",
+      });
+
+      await generatedImageRepo.save(image);
+      savedImages.push({
+        imageId,
+        filePath,
+        provider: response.provider,
+        model: response.model,
+      });
+    }
+
+    const completed = execution.complete({
+      content: JSON.stringify({
+        generatedImages: savedImages,
+        variationCount: savedImages.length,
+        promptUsed: masterPrompt,
+      }),
+      provider: response.provider,
+      model: response.model,
+    });
+
+    await executionRepo.save(completed);
+    return completed;
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    const failed = execution.fail(error);
+    await executionRepo.save(failed);
+    return failed;
+  }
+}
 
 interface BuildInputSnapshotInput {
   stageKey: string;

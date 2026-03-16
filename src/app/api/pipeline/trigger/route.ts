@@ -4,8 +4,11 @@ import {
   stageExecutionRepo,
   collectionRepo,
   designItemRepo,
+  generatedImageRepo,
 } from "../../../../lib/server/dependencies";
 import { createGeminiTextProvider } from "../../../../infrastructure/providers/GeminiTextProvider";
+import { createPollinationsImageProvider } from "../../../../infrastructure/providers/PollinationsImageProvider";
+import { LocalAssetStorage } from "../../../../infrastructure/storage/LocalAssetStorage";
 import type { LLMProvider } from "../../../../domain/providers/LLMProvider";
 
 function getLLMProvider(): LLMProvider {
@@ -48,6 +51,14 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const imageProvider = createPollinationsImageProvider({
+      model: process.env.IMAGE_GENERATION_MODEL ?? "flux",
+    });
+
+    const storage = new LocalAssetStorage(
+      process.env.ASSET_STORAGE_PATH ?? "./storage/assets",
+    );
+
     const execution = await runStageExecution({
       stageKey,
       targetId,
@@ -56,6 +67,9 @@ export async function POST(request: NextRequest) {
         collectionRepo,
         designItemRepo,
         llm: getLLMProvider(),
+        imageProvider,
+        storage,
+        generatedImageRepo,
       },
     });
 

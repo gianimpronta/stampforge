@@ -135,11 +135,19 @@ export function ImageGallery({ designItemId, collectionId }: ImageGalleryProps) 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {images.map((image) => (
             <Card key={image.id} className="overflow-hidden">
-              <div className="bg-muted flex h-48 items-center justify-center">
-                <p className="text-muted-foreground text-xs">
-                  {image.filePath}
-                </p>
-              </div>
+              {image.status === "ready" ? (
+                <img
+                  src={`/api/assets/${image.filePath}`}
+                  alt={image.promptUsed}
+                  className="h-48 w-full object-cover"
+                />
+              ) : (
+                <div className="bg-muted flex h-48 items-center justify-center">
+                  <p className="text-muted-foreground text-xs">
+                    {image.status === "pending" ? "Gerando..." : "Falhou"}
+                  </p>
+                </div>
+              )}
               <div className="space-y-2 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <p className="text-xs font-medium">

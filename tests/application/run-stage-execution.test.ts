@@ -3,9 +3,13 @@ import { runStageExecution, stripCodeFences } from "../../src/application/runSta
 import { InMemoryStageExecutionRepository } from "../../src/infrastructure/db/repositories/InMemoryStageExecutionRepository";
 import { InMemoryCollectionRepository } from "../../src/infrastructure/db/repositories/InMemoryCollectionRepository";
 import { InMemoryDesignItemRepository } from "../../src/infrastructure/db/repositories/InMemoryDesignItemRepository";
+import { InMemoryGeneratedImageRepository } from "../../src/infrastructure/db/repositories/InMemoryGeneratedImageRepository";
 import { Collection } from "../../src/domain/collections/Collection";
+import { DesignItem } from "../../src/domain/design-items/DesignItem";
 import { StageExecution } from "../../src/domain/pipeline/StageExecution";
 import type { LLMProvider, LLMResponse } from "../../src/domain/providers/LLMProvider";
+import type { ImageGenerationProvider, ImageGenerationResponse } from "../../src/domain/providers/ImageGenerationProvider";
+import type { AssetStorage } from "../../src/domain/providers/AssetStorage";
 
 function makeFakeLLMProvider(response: string): LLMProvider {
   return {
@@ -233,6 +237,198 @@ describe("runStageExecution", () => {
     expect(capturedPrompt).toContain("Coleção retrô de Mega Man com pixel art.");
     expect(capturedPrompt).toContain("collectionName");
   });
+  it("gera imagens quando o estágio é visual-variation-generation", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+    const generatedImageRepo = new InMemoryGeneratedImageRepository();
+    const llm = makeFakeLLMProvider("não deveria ser chamado");
+
+    // Configura collection e design item
+    const collection = Collection.create({
+      id: "col-img-1",
+      name: "Coleção Zelda",
+      briefing: "Camisetas Zelda.",
+    });
+    await collectionRepo.save(collection);
+
+    const designItem = DesignItem.create({
+      id: "item-img-1",
+      collectionId: "col-img-1",
+      name: "Camiseta Link",
+    });
+    await designItemRepo.save(designItem);
+
+    // Pré-popula execução aprovada do master-prompt-assembly (dependência direta)
+    const masterExec = StageExecution.start({
+      id: "exec-master-1",
+      stageKey: "master-prompt-assembly",
+      targetId: "item-img-1",
+      targetType: "design_item",
+      inputSnapshot: {},
+    })
+      .complete({ content: '{"masterPrompt": "A heroic scene of Link"}' })
+      .approve({ actorId: "user-1" });
+    await executionRepo.save(masterExec);
+
+    // Também precisa das dependências transitivas aprovadas para o master-prompt-assembly
+    const transitiveDeps = [
+      "collection-briefing",
+      "game-selection",
+      "game-universe-extraction",
+      "design-concept",
+      "theme-definition",
+      "visual-style-definition",
+      "copy-generation",
+      "shirt-composition-definition",
+      "production-constraints-definition",
+    ];
+    for (const key of transitiveDeps) {
+      const scope =
+        key === "collection-briefing" || key === "game-selection" || key === "game-universe-extraction"
+          ? "collection"
+          : "design_item";
+      const targetId = scope === "collection" ? "col-img-1" : "item-img-1";
+      const exec = StageExecution.start({
+        id: `exec-${key}`,
+        stageKey: key,
+        targetId,
+        targetType: scope === "collection" ? "collection" : "design_item",
+        inputSnapshot: {},
+      })
+        .complete({ content: `resultado de ${key}` })
+        .approve({ actorId: "user-1" });
+      await executionRepo.save(exec);
+    }
+
+    // Fake image provider
+    const savedFiles: Array<{ path: string; data: Buffer }> = [];
+    const imageProvider: ImageGenerationProvider = {
+      async generateImages(): Promise<ImageGenerationResponse> {
+        return {
+          images: [
+            { data: Buffer.from("fake-png-1"), mimeType: "image/png" },
+            { data: Buffer.from("fake-png-2"), mimeType: "image/png" },
+          ],
+          provider: "fake-image",
+          model: "fake-imagen",
+        };
+      },
+    };
+
+    const storage: AssetStorage = {
+      async save(path, data) {
+        savedFiles.push({ path, data });
+        return path;
+      },
+      async read() { return Buffer.from(""); },
+      getUrl(path) { return `/assets/${path}`; },
+      async exists() { return false; },
+    };
+
+    const result = await runStageExecution({
+      stageKey: "visual-variation-generation",
+      targetId: "item-img-1",
+      deps: {
+        executionRepo,
+        collectionRepo,
+        designItemRepo,
+        llm,
+        imageProvider,
+        storage,
+        generatedImageRepo,
+      },
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.outputSnapshot).not.toBeNull();
+
+    // Deve ter salvo 2 arquivos
+    expect(savedFiles).toHaveLength(2);
+    expect(savedFiles[0].path).toContain("item-img-1");
+
+    // Deve ter salvo 2 GeneratedImage no repo
+    const images = await generatedImageRepo.findByDesignItemId("item-img-1");
+    expect(images).toHaveLength(2);
+    expect(images[0].sourceExecutionId).toBe(result.id);
+    expect(images[0].provider).toBe("fake-image");
+    expect(images[0].model).toBe("fake-imagen");
+    expect(images[0].status).toBe("ready");
+  });
+
+  it("marca como failed quando imageProvider falha no visual-variation-generation", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+    const generatedImageRepo = new InMemoryGeneratedImageRepository();
+    const llm = makeFakeLLMProvider("não deveria ser chamado");
+
+    const collection = Collection.create({
+      id: "col-img-2",
+      name: "Coleção Fallout",
+      briefing: "Camisetas Fallout.",
+    });
+    await collectionRepo.save(collection);
+
+    const designItem = DesignItem.create({
+      id: "item-img-2",
+      collectionId: "col-img-2",
+      name: "Camiseta Vault Boy",
+    });
+    await designItemRepo.save(designItem);
+
+    // Pré-popula todas as dependências aprovadas
+    const allDeps = [
+      "collection-briefing", "game-selection", "game-universe-extraction",
+      "design-concept", "theme-definition", "visual-style-definition",
+      "copy-generation", "shirt-composition-definition",
+      "production-constraints-definition", "master-prompt-assembly",
+    ];
+    for (const key of allDeps) {
+      const scope = ["collection-briefing", "game-selection", "game-universe-extraction"].includes(key)
+        ? "collection" : "design_item";
+      const targetId = scope === "collection" ? "col-img-2" : "item-img-2";
+      const exec = StageExecution.start({
+        id: `exec-fail-${key}`,
+        stageKey: key,
+        targetId,
+        targetType: scope === "collection" ? "collection" : "design_item",
+        inputSnapshot: {},
+      })
+        .complete({ content: `resultado de ${key}` })
+        .approve({ actorId: "user-1" });
+      await executionRepo.save(exec);
+    }
+
+    const failingImageProvider: ImageGenerationProvider = {
+      async generateImages() { throw new Error("Imagen API indisponível"); },
+    };
+
+    const storage: AssetStorage = {
+      async save(path) { return path; },
+      async read() { return Buffer.from(""); },
+      getUrl(path) { return `/assets/${path}`; },
+      async exists() { return false; },
+    };
+
+    const result = await runStageExecution({
+      stageKey: "visual-variation-generation",
+      targetId: "item-img-2",
+      deps: {
+        executionRepo,
+        collectionRepo,
+        designItemRepo,
+        llm,
+        imageProvider: failingImageProvider,
+        storage,
+        generatedImageRepo,
+      },
+    });
+
+    expect(result.status).toBe("failed");
+    expect(result.failureReason).toBe("Imagen API indisponível");
+  });
+
   it("lança erro se a coleção não existe no repositório", async () => {
     const executionRepo = new InMemoryStageExecutionRepository();
     const collectionRepo = new InMemoryCollectionRepository();

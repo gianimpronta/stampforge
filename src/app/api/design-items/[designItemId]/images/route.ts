@@ -59,7 +59,7 @@ export async function POST(
 
   const imageProvider = createGeminiImageProvider({
     apiKey,
-    model: process.env.GEMINI_IMAGE_MODEL ?? "imagen-3.0-generate-002",
+    model: process.env.GEMINI_IMAGE_MODEL ?? "imagen-4.0-generate-001",
   });
 
   const storage = new LocalAssetStorage(
