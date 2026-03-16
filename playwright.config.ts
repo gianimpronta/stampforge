@@ -6,9 +6,14 @@ export default defineConfig({
   testDir: "tests/e2e",
   timeout: 30_000,
   retries: isCI ? 1 : 0,
+  reporter: isCI
+    ? [["github"], ["html", { open: "never" }]]
+    : [["list"]],
   use: {
     baseURL: "http://localhost:3000",
     headless: true,
+    trace: "on-first-retry",
+    screenshot: "only-on-failure",
   },
   webServer: {
     command: isCI ? "npm run build && npm start" : "npm run dev",

@@ -39,7 +39,7 @@ export async function GET(
   const ext = filePath.split(".").pop()?.toLowerCase() ?? "";
   const contentType = MIME_TYPES[ext] ?? "application/octet-stream";
 
-  return new NextResponse(data, {
+  return new NextResponse(new Uint8Array(data), {
     headers: {
       "Content-Type": contentType,
       "Cache-Control": "public, max-age=31536000, immutable",

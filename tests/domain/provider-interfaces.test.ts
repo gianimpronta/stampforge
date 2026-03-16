@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import type { LLMProvider } from "../../src/domain/providers/LLMProvider";
-import type { ImageGenerationProvider } from "../../src/domain/providers/ImageGenerationProvider";
+import type { LLMProvider as _LLMProvider } from "../../src/domain/providers/LLMProvider";
+import type { ImageGenerationProvider as _ImageGenerationProvider } from "../../src/domain/providers/ImageGenerationProvider";
 
 describe("provider interfaces", () => {
   it("defines interfaces for text and image generation", () => {

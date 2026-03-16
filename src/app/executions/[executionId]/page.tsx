@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import {
   ExecutionDetail,
+  type ExecutionDetailData,
 } from "@/components/stampforge/ExecutionDetail";
 import { BackButton } from "@/components/stampforge/BackButton";
 import { stageExecutionRepo } from "@/lib/server/dependencies";
@@ -19,6 +20,24 @@ export default async function ExecutionDetailPage({
     notFound();
   }
 
+  const data: ExecutionDetailData = {
+    id: execution.id,
+    stageKey: execution.stageKey,
+    targetId: execution.targetId,
+    targetType: execution.targetType,
+    status: execution.status,
+    inputSnapshot: execution.inputSnapshot,
+    outputSnapshot: execution.outputSnapshot,
+    startedAt: execution.startedAt.toISOString(),
+    completedAt: execution.completedAt?.toISOString() ?? null,
+    approvedBy: execution.approvedBy,
+    approvedAt: execution.approvedAt?.toISOString() ?? null,
+    rejectedBy: execution.rejectedBy,
+    rejectedAt: execution.rejectedAt?.toISOString() ?? null,
+    rejectionReason: execution.rejectionReason,
+    failureReason: execution.failureReason,
+  };
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-8">
       <div className="mb-6">
@@ -29,7 +48,7 @@ export default async function ExecutionDetailPage({
         </p>
       </div>
 
-      <ExecutionDetail execution={execution} />
+      <ExecutionDetail execution={data} />
     </main>
   );
 }
