@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import { createTestCollection } from "./helpers";
+
+function stageCard(page: Page, stageName: string) {
+  return page.locator('[data-slot="card"]').filter({ hasText: stageName });
+}
 
 test.describe("Itens de Design", () => {
   test("cria um item de design via UI e navega para o pipeline", async ({
@@ -47,7 +51,6 @@ test.describe("Itens de Design", () => {
   }) => {
     const collection = await createTestCollection(request);
 
-    // Cria design item via API para ir direto ao pipeline
     const itemRes = await request.post(
       `/api/collections/${collection.id}/design-items`,
       { data: { name: `Item Pipeline ${Date.now()}` } },
@@ -62,11 +65,7 @@ test.describe("Itens de Design", () => {
       timeout: 10_000,
     });
 
-    // Verifica que o primeiro estágio tem badge "Pendente" e botão "Executar"
-    const briefingCard = page
-      .locator("div")
-      .filter({ hasText: /^01\s+Briefing da Coleção/ })
-      .first();
+    const briefingCard = stageCard(page, "Briefing da Coleção");
     await expect(briefingCard.getByText("Pendente")).toBeVisible();
     await expect(
       briefingCard.getByRole("button", { name: "Executar" }),

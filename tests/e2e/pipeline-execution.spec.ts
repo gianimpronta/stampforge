@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
 import {
   createTestCollection,
   createTestDesignItem,
@@ -7,6 +7,10 @@ import {
   Collection,
   DesignItem,
 } from "./helpers";
+
+function stageCard(page: Page, stageName: string) {
+  return page.locator('[data-slot="card"]').filter({ hasText: stageName });
+}
 
 test.describe("Execução do Pipeline", () => {
   let collection: Collection;
@@ -28,26 +32,19 @@ test.describe("Execução do Pipeline", () => {
       timeout: 10_000,
     });
 
-    const briefingCard = page
-      .locator("div")
-      .filter({ hasText: /^01\s+Briefing da Coleção/ })
-      .first();
+    const briefingCard = stageCard(page, "Briefing da Coleção");
 
-    // Verifica estado inicial
     await expect(briefingCard.getByText("Pendente")).toBeVisible();
     await expect(
       briefingCard.getByRole("button", { name: "Executar" }),
     ).toBeVisible();
 
-    // Dispara o estágio
     await briefingCard.getByRole("button", { name: "Executar" }).click();
 
-    // Aguarda status mudar para Concluído (stub é síncrono)
+    // Aguarda status Concluído — stub é síncrono
     await expect(briefingCard.getByText("Concluído")).toBeVisible({
       timeout: 15_000,
     });
-
-    // Botão "Detalhes" deve aparecer
     await expect(
       briefingCard.getByRole("button", { name: "Detalhes" }),
     ).toBeVisible();
@@ -57,7 +54,6 @@ test.describe("Execução do Pipeline", () => {
     page,
     request,
   }) => {
-    // Pré-condição: dispara o estágio via API
     await triggerStage(request, "collection-briefing", collection.id);
 
     await page.goto(
@@ -68,27 +64,19 @@ test.describe("Execução do Pipeline", () => {
       timeout: 10_000,
     });
 
-    const briefingCard = page
-      .locator("div")
-      .filter({ hasText: /^01\s+Briefing da Coleção/ })
-      .first();
-
-    // Aguarda status Concluído antes de abrir detalhes
+    const briefingCard = stageCard(page, "Briefing da Coleção");
     await expect(briefingCard.getByText("Concluído")).toBeVisible({
       timeout: 10_000,
     });
 
-    // Abre o painel de detalhes
     await briefingCard.getByRole("button", { name: "Detalhes" }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("Briefing da Coleção")).toBeVisible();
 
-    // Aprova a execução
     await dialog.getByRole("button", { name: "Aprovar" }).click();
 
-    // Dialog fecha e badge muda para Aprovado
     await expect(dialog).not.toBeVisible({ timeout: 5_000 });
     await expect(briefingCard.getByText("Aprovado")).toBeVisible({
       timeout: 10_000,
@@ -99,7 +87,6 @@ test.describe("Execução do Pipeline", () => {
     page,
     request,
   }) => {
-    // Pré-condição: dispara o estágio via API
     await triggerStage(request, "collection-briefing", collection.id);
 
     await page.goto(
@@ -110,35 +97,24 @@ test.describe("Execução do Pipeline", () => {
       timeout: 10_000,
     });
 
-    const briefingCard = page
-      .locator("div")
-      .filter({ hasText: /^01\s+Briefing da Coleção/ })
-      .first();
-
+    const briefingCard = stageCard(page, "Briefing da Coleção");
     await expect(briefingCard.getByText("Concluído")).toBeVisible({
       timeout: 10_000,
     });
 
-    // Abre o painel de detalhes
     await briefingCard.getByRole("button", { name: "Detalhes" }).click();
 
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
 
-    // Clica em Reprovar para mostrar o formulário
     await dialog.getByRole("button", { name: "Reprovar" }).click();
-
-    // Preenche o motivo
     await dialog
       .getByLabel("Motivo da reprovação")
       .fill("Output não atende ao briefing original");
-
-    // Confirma a reprovação
     await dialog
       .getByRole("button", { name: "Confirmar Reprovação" })
       .click();
 
-    // Dialog fecha e badge muda para Rejeitado
     await expect(dialog).not.toBeVisible({ timeout: 5_000 });
     await expect(briefingCard.getByText("Rejeitado")).toBeVisible({
       timeout: 10_000,
@@ -146,7 +122,6 @@ test.describe("Execução do Pipeline", () => {
   });
 
   test("permite re-executar após aprovação", async ({ page, request }) => {
-    // Pré-condição: dispara e aprova via API
     const execution = await triggerStage(
       request,
       "collection-briefing",
@@ -162,12 +137,7 @@ test.describe("Execução do Pipeline", () => {
       timeout: 10_000,
     });
 
-    const briefingCard = page
-      .locator("div")
-      .filter({ hasText: /^01\s+Briefing da Coleção/ })
-      .first();
-
-    // Deve mostrar "Aprovado" e botão "Re-executar"
+    const briefingCard = stageCard(page, "Briefing da Coleção");
     await expect(briefingCard.getByText("Aprovado")).toBeVisible({
       timeout: 10_000,
     });
@@ -175,10 +145,8 @@ test.describe("Execução do Pipeline", () => {
       briefingCard.getByRole("button", { name: "Re-executar" }),
     ).toBeVisible();
 
-    // Re-executa o estágio
     await briefingCard.getByRole("button", { name: "Re-executar" }).click();
 
-    // Aguarda nova execução completar
     await expect(briefingCard.getByText("Concluído")).toBeVisible({
       timeout: 15_000,
     });
@@ -196,7 +164,6 @@ test.describe("Execução do Pipeline", () => {
 
     await page.goto(`/executions/${execution.id}`);
 
-    // Verifica que a página de detalhe carregou com info da execução
     await expect(page.getByText("collection-briefing")).toBeVisible({
       timeout: 10_000,
     });
