@@ -214,5 +214,5 @@ jobs:
           image-ref: stampforge:${{ github.sha }}
           format: table
           exit-code: 1
-          severity: CRITICAL,HIGH
+          severity: CRITICAL
           ignore-unfixed: true

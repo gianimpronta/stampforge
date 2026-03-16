@@ -32,8 +32,8 @@ test.describe("Elegibilidade do Pipeline", () => {
       timeout: 10_000,
     });
 
-    // "Seleção de Games" depende de "collection-briefing" aprovado
-    const gameSelectionCard = stageCard(page, "Seleção de Games");
+    // "Seleção do Jogo" depende de "collection-briefing" aprovado
+    const gameSelectionCard = stageCard(page, "Seleção do Jogo");
 
     await expect(gameSelectionCard.getByText("Pendente")).toBeVisible();
     await expect(
@@ -63,7 +63,7 @@ test.describe("Elegibilidade do Pipeline", () => {
       timeout: 10_000,
     });
 
-    const gameSelectionCard = stageCard(page, "Seleção de Games");
+    const gameSelectionCard = stageCard(page, "Seleção do Jogo");
 
     await expect(
       gameSelectionCard.getByRole("button", { name: "Executar" }),
@@ -116,7 +116,7 @@ test.describe("Elegibilidade do Pipeline", () => {
     });
 
     // game-selection ainda bloqueado (completed ≠ approved)
-    const gameSelectionCard = stageCard(page, "Seleção de Games");
+    const gameSelectionCard = stageCard(page, "Seleção do Jogo");
     await expect(
       gameSelectionCard.getByRole("button", { name: "Executar" }),
     ).not.toBeVisible();
