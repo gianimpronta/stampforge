@@ -133,7 +133,7 @@ function ValueRenderer({ value }: { readonly value: unknown }) {
     return <ObjectRenderer data={value as Record<string, unknown>} />;
   }
 
-  return <span>{typeof value !== "object" ? String(value) : JSON.stringify(value)}</span>;
+  return <span>{String(value)}</span>;
 }
 
 function ObjectRenderer({ data }: { readonly data: Record<string, unknown> }) {
