@@ -7,41 +7,23 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import {
   StageExecutionPanel,
+  STATUS_LABELS,
+  STATUS_VARIANTS,
   type StageExecutionData,
-  type StageExecutionStatus,
 } from "./StageExecutionPanel";
 
 interface CatalogStage {
-  key: string;
-  name: string;
-  scope: string;
-  order: number;
-  dependencies: string[];
+  readonly key: string;
+  readonly name: string;
+  readonly scope: string;
+  readonly order: number;
+  readonly dependencies: readonly string[];
 }
 
 interface PipelineTimelineProps {
-  designItemId: string;
-  collectionId: string;
+  readonly designItemId: string;
+  readonly collectionId: string;
 }
-
-const STATUS_LABELS: Record<StageExecutionStatus, string> = {
-  running: "Executando",
-  completed: "Concluído",
-  approved: "Aprovado",
-  rejected: "Rejeitado",
-  failed: "Falhou",
-};
-
-const STATUS_VARIANTS: Record<
-  StageExecutionStatus,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  running: "secondary",
-  completed: "default",
-  approved: "default",
-  rejected: "destructive",
-  failed: "destructive",
-};
 
 export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelineProps) {
   const [catalog, setCatalog] = useState<CatalogStage[]>([]);
@@ -73,7 +55,7 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
       const collectionExecs: StageExecutionData[] =
         await collectionTimelineRes.json();
 
-      setCatalog(catalogData.sort((a, b) => a.order - b.order));
+      setCatalog(catalogData.toSorted((a, b) => a.order - b.order));
       setExecutions([...collectionExecs, ...itemExecs]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
@@ -91,7 +73,7 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
   ): StageExecutionData | undefined {
     const stageExecutions = executions.filter((e) => e.stageKey === stageKey);
     if (stageExecutions.length === 0) return undefined;
-    return stageExecutions.sort(
+    return stageExecutions.toSorted(
       (a, b) =>
         new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
     )[0];

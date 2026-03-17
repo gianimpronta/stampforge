@@ -5,13 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-
-export type StageExecutionStatus =
-  | "running"
-  | "completed"
-  | "approved"
-  | "rejected"
-  | "failed";
+import {
+  type StageExecutionStatus,
+  STATUS_LABELS,
+  STATUS_VARIANTS,
+} from "./StageExecutionPanel";
 
 export interface ExecutionDetailData {
   id: string;
@@ -32,27 +30,8 @@ export interface ExecutionDetailData {
 }
 
 interface ExecutionDetailProps {
-  execution: ExecutionDetailData;
+  readonly execution: ExecutionDetailData;
 }
-
-const STATUS_LABELS: Record<StageExecutionStatus, string> = {
-  running: "Executando",
-  completed: "Concluído",
-  approved: "Aprovado",
-  rejected: "Rejeitado",
-  failed: "Falhou",
-};
-
-const STATUS_VARIANTS: Record<
-  StageExecutionStatus,
-  "default" | "secondary" | "destructive" | "outline"
-> = {
-  running: "secondary",
-  completed: "default",
-  approved: "default",
-  rejected: "destructive",
-  failed: "destructive",
-};
 
 export function ExecutionDetail({ execution: initialExecution }: ExecutionDetailProps) {
   const [execution, setExecution] = useState<ExecutionDetailData>(initialExecution);

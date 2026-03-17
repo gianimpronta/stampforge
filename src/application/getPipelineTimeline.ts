@@ -21,7 +21,7 @@ export async function getPipelineTimeline(
   const { stageExecutionRepo } = deps;
 
   const executions = await stageExecutionRepo.findByTargetId(targetId);
-  return executions.sort(
+  return executions.toSorted(
     (a, b) => a.startedAt.getTime() - b.startedAt.getTime(),
   );
 }

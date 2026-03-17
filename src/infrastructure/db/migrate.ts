@@ -1,4 +1,4 @@
-import { readFileSync } from "fs";
+import { readFileSync } from "node:fs";
 import { join } from "path";
 import { createDbClient } from "./client";
 import { loadRuntimeConfig } from "../../server/config";

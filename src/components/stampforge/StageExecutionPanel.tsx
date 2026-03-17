@@ -38,14 +38,14 @@ export interface StageExecutionData {
 }
 
 interface StageExecutionPanelProps {
-  execution: StageExecutionData;
-  stageName: string;
-  open: boolean;
-  onClose: () => void;
-  onActionDone: () => void;
+  readonly execution: StageExecutionData;
+  readonly stageName: string;
+  readonly open: boolean;
+  readonly onClose: () => void;
+  readonly onActionDone: () => void;
 }
 
-const STATUS_LABELS: Record<StageExecutionStatus, string> = {
+export const STATUS_LABELS: Record<StageExecutionStatus, string> = {
   running: "Executando",
   completed: "Concluído",
   approved: "Aprovado",
@@ -53,7 +53,7 @@ const STATUS_LABELS: Record<StageExecutionStatus, string> = {
   failed: "Falhou",
 };
 
-const STATUS_VARIANTS: Record<
+export const STATUS_VARIANTS: Record<
   StageExecutionStatus,
   "default" | "secondary" | "destructive" | "outline"
 > = {

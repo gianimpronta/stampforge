@@ -47,7 +47,7 @@ export function CollectionList() {
     fetchCollections();
   }, [fetchCollections]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
     try {
