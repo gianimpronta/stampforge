@@ -1,140 +1,226 @@
 # StampForge
 
-O **StampForge** e um sistema modular de criacao assistida por IA para desenvolvimento de estampas tematicas, com foco inicial em camisetas e potencial de expansao para outros produtos visuais.
+Sistema assistido por IA para criação de estampas temáticas. Transforma uma direção criativa de coleção em designs rastreáveis e revisáveis, estágio por estágio.
 
-Em vez de depender de prompts isolados e tentativa e erro, o sistema organiza a criacao em um fluxo estruturado. A ideia central e transformar um tema amplo em uma estampa coerente, comercialmente relevante e tecnicamente viavel para producao.
+[![CI](https://github.com/gianimpronta/stampforge/actions/workflows/ci.yml/badge.svg)](https://github.com/gianimpronta/stampforge/actions/workflows/ci.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=gianimpronta_stampforge&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=gianimpronta_stampforge)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=gianimpronta_stampforge&metric=coverage)](https://sonarcloud.io/summary/new_code?id=gianimpronta_stampforge)
 
-## Visao Geral
+---
 
-O StampForge atua como um pipeline criativo em camadas. Cada etapa recebe um contexto, resolve uma parte do problema e entrega uma saida estruturada para a etapa seguinte.
+## O que é
 
-Esse fluxo permite:
+O StampForge é um pipeline criativo estruturado — não um gerador de prompt único. Em vez de tentativa e erro, o sistema organiza a criação em 11 estágios sequenciais, onde cada etapa recebe contexto aprovado da anterior e entrega uma saída estruturada para a próxima.
 
-- transformar temas em conceitos de estampa
-- reduzir aleatoriedade na ideacao
-- manter coerencia entre conceito, estilo e execucao
-- facilitar criacao de colecoes
-- reaproveitar prompts, estilos e processos
-- aumentar a chance de gerar artes que funcionem como produto
+**Problema resolvido:** artes genéricas, sem identidade visual, com pouca coerência entre tema e estilo, difíceis de reproduzir em escala.
 
-## Problema Que o Sistema Resolve
+**Solução:** pipeline modular com aprovação humana em cada estágio, rastreabilidade completa e prompts específicos por etapa.
 
-Ao criar estampas com IA de forma direta, alguns problemas aparecem com frequencia:
+---
 
-- artes genericas
-- pouca identidade visual
-- excesso de elementos
-- bom impacto visual, mas baixa adequacao para camiseta
-- falta de coerencia entre tema e estilo
-- dificuldade de repetir bons resultados
-- dependencia de tentativa e erro em prompts soltos
+## Pipeline de 11 Estágios
 
-O StampForge resolve isso ao estruturar o processo criativo em etapas claras, com decisoes mais explicitas e reaproveitaveis.
+| # | Estágio | Escopo | Descrição |
+|---|---|---|---|
+| 01 | `collection-briefing` | Coleção | Interpreta o briefing em direção criativa estruturada |
+| 02 | `game-selection` | Coleção | Seleciona universos de referência |
+| 03 | `game-universe-extraction` | Coleção | Extrai elementos visuais dos universos |
+| 04 | `design-concept` | Item | Define o conceito central do design |
+| 05 | `theme-definition` | Item | Expande o conceito em tema narrativo |
+| 06 | `visual-style-definition` | Item | Define estilo visual completo |
+| 07 | `copy-generation` | Item | Gera textos e slogans |
+| 08 | `shirt-composition-definition` | Item | Define composição física na camiseta |
+| 09 | `production-constraints-definition` | Item | Define restrições técnicas de produção |
+| 10 | `master-prompt-assembly` | Item | Sintetiza todos os outputs em prompt otimizado |
+| 11 | `visual-variation-generation` | Item | Gera variações visuais via IA |
 
-## Objetivo
+> Estágios de coleção (`01-03`) compartilham contexto entre todos os itens da coleção.
+> Estágios de item (`04-11`) são independentes por design item.
 
-O objetivo do StampForge e estruturar e escalar a criacao de estampas, combinando:
+---
 
-- criatividade
-- consistencia visual
-- viabilidade de impressao
+## Stack Técnica
 
-Na pratica, o sistema busca transformar um tema em uma arte que seja:
+| Camada | Tecnologia |
+|---|---|
+| Frontend | Next.js 16, React 19, shadcn/ui, Tailwind CSS |
+| Backend | Node.js, TypeScript |
+| Banco de dados | PostgreSQL 17 |
+| Fila | Redis + BullMQ |
+| IA — texto | Google Gemini (via `@google/generative-ai`) |
+| IA — imagem | Pollinations (sem API key) / Gemini Imagen |
+| Containers | Docker Compose |
 
-- reconhecivel dentro de um nicho
-- visualmente forte
-- adequada ao produto final
-- pronta para refinamento e producao
+---
 
-## Fluxo do Sistema
+## Início Rápido
 
-O fluxo geral do StampForge pode ser resumido em 14 etapas:
+### Pré-requisitos
 
-1. **Briefing**  
-   Define publico-alvo, estilo da colecao, tom da comunicacao, tipo de produto e objetivo da peca.
-2. **Escolha do tema ou universo**  
-   Seleciona o assunto central da estampa, como nicho, obra, referencia cultural ou conceito.
-3. **Extracao de elementos centrais**  
-   Identifica simbolos, objetos, sensacoes, arquetipos e referencias que tornam o tema reconhecivel.
-4. **Definicao do conceito da estampa**  
-   Estabelece a ideia principal da peca, como insignia, poster retro, manifesto de nicho ou parodia estilizada.
-5. **Definicao do tema narrativo**  
-   Escolhe o eixo simbolico ou emocional da arte, como poder, nostalgia, estrategia ou humor interno.
-6. **Definicao do estilo visual**  
-   Determina a linguagem estetica da peca, como vintage, badge retro, gravura, streetwear ou ilustracao vetorial.
-7. **Geracao de copy**  
-   Cria slogans, frases, assinaturas ou define a ausencia de texto.
-8. **Composicao da estampa**  
-   Decide a logica visual da arte no produto: centralizada, emblema, peito, vertical, foco em texto ou simbolo.
-9. **Restricoes de producao**  
-   Ajusta a criacao para contraste, numero de cores, fundo, reducao de detalhes e viabilidade tecnica.
-10. **Construcao do prompt final**  
-    Consolida as decisoes em um prompt estruturado para o gerador visual.
-11. **Geracao de variacoes**  
-    Produz multiplas versoes da mesma ideia com ajustes de estilo, humor, premiumizacao ou simplicidade.
-12. **Curadoria e avaliacao**  
-    Seleciona as melhores opcoes por forca visual, legibilidade, originalidade e potencial comercial.
-13. **Refinamento final**  
-    Ajusta contraste, equilibrio, leitura e acabamento da arte escolhida.
-14. **Saida para producao**  
-    Gera os formatos finais, como PNG com fundo transparente, versoes clara e escura, reduzida e monocromatica.
+- Docker e Docker Compose
+- Node.js 20+
+- (Opcional) Chave da API Gemini para usar o LLM real
 
-## Estrutura Conceitual
+### 1. Configurar ambiente
 
-O sistema pode ser entendido como a combinacao de quatro grandes blocos:
+```bash
+cp .env.example .env
+# editar .env e adicionar GEMINI_API_KEY se necessário
+```
 
-### 1. Estrategia
+Sem `GEMINI_API_KEY`, o sistema usa um provider stub que retorna respostas simuladas — útil para desenvolvimento local.
 
-Define contexto, publico, intencao da peca e objetivo da estampa.
+### 2. Subir os serviços
 
-### 2. Ideacao
+```bash
+docker compose up
+```
 
-Transforma o tema em um conceito criativo com significado e direcao.
+Isso inicia automaticamente:
+- `postgres` — banco de dados
+- `redis` — fila de jobs
+- `migrate` — roda as migrations
+- `app` — Next.js em `http://localhost:3000`
+- `worker` — consumidor de jobs BullMQ
 
-### 3. Direcao Visual
+### 3. Acessar
 
-Organiza estilo, composicao, linguagem estetica e identidade da arte.
+Abrir `http://localhost:3000` e criar uma coleção.
 
-### 4. Producao
+---
 
-Converte o conceito em um material pronto para uso real, com restricoes tecnicas consideradas desde o inicio.
+## Desenvolvimento Local (sem Docker)
 
-## Diferencial
+```bash
+# Instalar dependências
+npm install
 
-O diferencial do StampForge nao esta apenas em gerar imagens, mas em organizar a inteligencia criativa antes da geracao visual.
+# Subir apenas os serviços de infra
+docker compose up postgres redis -d
 
-Em outras palavras, o sistema funciona como um orquestrador de decisoes criativas. Ele busca alinhar tres fatores ao mesmo tempo:
+# Copiar e editar .env
+cp .env.example .env
+# Alterar hosts para localhost:
+# DATABASE_URL=postgresql://stampforge:stampforge@localhost:5432/stampforge
+# REDIS_URL=redis://localhost:6379
 
-- boa ideia
-- boa execucao visual
-- boa adaptacao ao produto final
+# Rodar migration
+npm run migrate
 
-## Possibilidades de Uso
+# Iniciar app e worker em terminais separados
+npm run dev
+npm run dev:worker
+```
 
-Embora tenha surgido com foco inicial em estampas de nicho, o fluxo e reutilizavel em diferentes contextos:
+---
 
-- camisetas geek
-- colecoes tematicas
-- produtos de fandom
-- estampas com humor interno
-- merch de comunidades
-- linhas sazonais
-- posters e artes decorativas
-- canecas, adesivos e outros impressos
+## Variáveis de Ambiente
 
-## Beneficios Esperados
+| Variável | Obrigatória | Descrição |
+|---|---|---|
+| `DATABASE_URL` | ✅ | URL de conexão PostgreSQL |
+| `REDIS_URL` | ✅ | URL de conexão Redis |
+| `NEXT_PUBLIC_APP_URL` | ✅ | URL pública da aplicação |
+| `GEMINI_API_KEY` | ❌ | Chave Gemini (sem ela, usa stub) |
+| `GEMINI_TEXT_MODEL` | ❌ | Modelo de texto (padrão: `gemini-2.5-flash-lite`) |
+| `GEMINI_IMAGE_MODEL` | ❌ | Modelo de imagem (padrão: `imagen-4.0-generate-001`) |
 
-- padronizacao do processo criativo
-- aumento de qualidade das ideias
-- reaproveitamento de conceitos e prompts
-- facilidade para escalar colecoes
-- maior controle estetico
-- melhor alinhamento entre arte e produto
-- reducao de retrabalho
-- mais consistencia entre estampas diferentes
+---
 
-## Resumo
+## Testes
 
-O StampForge transforma temas em produtos visuais por meio de um fluxo estruturado de ideacao, direcao criativa, geracao e refinamento.
+```bash
+# Testes unitários e de integração (82 testes)
+npm test
 
-Seu objetivo e tornar o processo de criacao mais inteligente, reaproveitavel e escalavel, permitindo gerar estampas com mais identidade, coerencia visual e potencial de uso comercial.
+# Testes com relatório de cobertura
+npm run test:coverage
+
+# Testes E2E (requer servidor rodando + postgres + redis)
+npm run test:e2e
+```
+
+### Estrutura de testes
+
+```
+tests/
+├── domain/          # Regras de domínio, elegibilidade, aprovação
+├── application/     # Casos de uso, rastreabilidade de imagens
+├── integration/     # Repositórios, providers, schema DB
+└── e2e/             # Playwright — fluxo completo da pipeline
+```
+
+---
+
+## Scripts Disponíveis
+
+| Script | Descrição |
+|---|---|
+| `npm run dev` | Next.js em modo desenvolvimento |
+| `npm run dev:worker` | Worker BullMQ com hot-reload |
+| `npm run build` | Build de produção Next.js |
+| `npm start` | Servidor de produção |
+| `npm run worker` | Worker BullMQ (produção) |
+| `npm run migrate` | Executa migrations do banco |
+| `npm run type-check` | Verificação de tipos TypeScript |
+| `npm run lint` | ESLint |
+| `npm test` | Testes Vitest |
+| `npm run test:coverage` | Testes com cobertura (lcov + html) |
+| `npm run test:e2e` | Testes Playwright E2E |
+
+---
+
+## Arquitetura
+
+O sistema é um **monólito modular** com as seguintes camadas:
+
+```
+src/
+├── app/              # Next.js App Router — páginas e rotas de API
+├── components/       # UI components (shadcn/ui + específicos)
+├── domain/           # Entidades, regras de negócio, interfaces
+├── application/      # Casos de uso (orquestração)
+├── infrastructure/   # DB, providers de IA, storage
+├── server/           # Jobs BullMQ, worker, config
+└── lib/              # Utilitários e injeção de dependências
+```
+
+**Princípios arquiteturais:**
+- `PipelineStage` (definição estática) é separado de `StageExecution` (registro histórico)
+- `completed` ≠ `approved` — aprovação humana é explícita e obrigatória
+- Downstream stages só executam se o upstream estiver `approved`
+- Todo output é salvo como snapshot imutável no banco
+- Imagens geradas referenciam a `StageExecution` exata que as produziu
+
+---
+
+## CI/CD
+
+A pipeline roda no GitHub Actions com os seguintes jobs:
+
+| Job | Quando | O que faz |
+|---|---|---|
+| `build` | push/PR | type-check + next build + npm audit |
+| `lint` | push/PR | ESLint (next/core-web-vitals) |
+| `test` | push/PR | Vitest + coverage (lcov) |
+| `security` | push/PR | TruffleHog secret scanning |
+| `commitlint` | PR | Valida mensagens de commit |
+| `e2e` | push/PR | Playwright (requer build+lint+test+security) |
+| `sonar` | push/PR | SonarCloud quality gate (requer test) |
+| `codeql` | push/PR/semanal | SAST CodeQL |
+| `release` | push de tag `v*` | Cria GitHub Release com changelog |
+| `docker` | push de tag `v*` | Build + push ghcr.io com tags versionadas |
+
+**Dependabot** cria PRs automáticos às segundas-feiras para dependências npm e GitHub Actions.
+
+---
+
+## Contribuindo
+
+1. Sincronize com `main`
+2. Crie um branch: `feat/minha-feature`, `fix/meu-bug`, `chore/tarefa`
+3. Escreva testes para a mudança
+4. Use commits convencionais: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`
+5. Abra um PR — a pipeline valida automaticamente
+
+Consulte [`docs/git-workflow.md`](./docs/git-workflow.md) para o modelo de branches, ciclo de trabalho e política de releases.

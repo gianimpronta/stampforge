@@ -1,46 +1,10 @@
-# Node / Next.js
 node_modules/
 .next/
-out/
 dist/
-build/
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Environment
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Tests
-coverage/
-playwright-report/
-test-results/
-
-# TypeScript
 *.tsbuildinfo
-
-# OS / Editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-
-# Local runtime / generated assets
-.superpowers/
-tmp/
-temp/
-storage/
-uploads/
-generated/
-assets/
-
-# Docker local data
-.docker/
+next-env.d.ts
+/storage/assets/
+coverage/
+test-results/
+.claude/settings.local.json

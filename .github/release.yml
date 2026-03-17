@@ -1,0 +1,26 @@
+changelog:
+  exclude:
+    labels:
+      - ignore-for-release
+  categories:
+    - title: "Features"
+      labels:
+        - enhancement
+        - pipeline
+        - domain
+        - frontend
+        - api
+        - worker
+    - title: "Bug Fixes"
+      labels:
+        - bug
+    - title: "Infrastructure"
+      labels:
+        - infra
+    - title: "Tests"
+      labels:
+        - test
+    - title: "Maintenance"
+      labels:
+        - chore
+        - documentation
