@@ -28,7 +28,9 @@ export function createPollinationsImageProvider(
       const images: Array<{ data: Buffer; mimeType: string }> = [];
 
       for (let i = 0; i < count; i++) {
-        const seed = Math.floor(Math.random() * 1_000_000) + i;
+        const randomBytes = new Uint32Array(1);
+        crypto.getRandomValues(randomBytes);
+        const seed = (randomBytes[0] % 1_000_000) + i;
         // Pollinations aceita prompts via URL — truncar se necessário para evitar URLs muito longas
         const truncatedPrompt = request.prompt.length > 500
           ? request.prompt.slice(0, 500)
