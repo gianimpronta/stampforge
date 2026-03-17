@@ -165,7 +165,7 @@ test.describe("Execução do Pipeline", () => {
     await page.goto(`/executions/${execution.id}`);
 
     // stageKey aparece em múltiplos lugares (header + snapshots); verifica pelo label
-    await expect(page.getByText("Estágio")).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText("Estágio", { exact: true })).toBeVisible({ timeout: 10_000 });
     await expect(page.getByText("collection-briefing").first()).toBeVisible();
   });
 });
