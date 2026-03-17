@@ -23,7 +23,7 @@ CREATE INDEX idx_design_items_collection_id ON design_items (collection_id);
 
 -- Pipeline stages: static stage definitions (blueprint, never mutated at runtime).
 CREATE TABLE pipeline_stages (
-  key          VARCHAR(128) PRIMARY KEY,
+  key          TEXT PRIMARY KEY,
   name         TEXT         NOT NULL,
   scope        TEXT         NOT NULL CHECK (scope IN ('collection', 'design_item')),
   stage_order  INTEGER      NOT NULL,
@@ -33,7 +33,7 @@ CREATE TABLE pipeline_stages (
 -- Stage executions: historical records of running a stage.
 CREATE TABLE stage_executions (
   id               UUID        PRIMARY KEY,
-  stage_key        VARCHAR(128) NOT NULL REFERENCES pipeline_stages (key),
+  stage_key        TEXT NOT NULL REFERENCES pipeline_stages (key),
   target_id        UUID        NOT NULL,
   target_type      TEXT        NOT NULL CHECK (target_type IN ('collection', 'design_item')),
   status           TEXT        NOT NULL CHECK (status IN ('running', 'completed', 'approved', 'rejected', 'failed')),

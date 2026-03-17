@@ -21,6 +21,10 @@ interface Collection {
   createdAt: string;
 }
 
+function collectionCountLabel(count: number): string {
+  return count === 1 ? "1 coleção" : `${count} coleções`;
+}
+
 export function CollectionList() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -87,7 +91,7 @@ export function CollectionList() {
         <p className="text-muted-foreground text-sm">
           {collections.length === 0
             ? "Nenhuma coleção criada ainda."
-            : `${collections.length} coleção${collections.length > 1 ? "ões" : ""}`}
+            : collectionCountLabel(collections.length)}
         </p>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>

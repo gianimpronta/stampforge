@@ -105,8 +105,8 @@ function ValueRenderer({ value }: { value: unknown }) {
     if (typeof value[0] === "string" || typeof value[0] === "number") {
       return (
         <div className="flex flex-wrap gap-1">
-          {value.map((item, i) => (
-            <span key={i} className="bg-muted rounded px-2 py-0.5 text-xs">
+          {value.map((item) => (
+            <span key={String(item)} className="bg-muted rounded px-2 py-0.5 text-xs">
               {String(item)}
             </span>
           ))}
@@ -116,8 +116,8 @@ function ValueRenderer({ value }: { value: unknown }) {
 
     return (
       <div className="space-y-2">
-        {value.map((item, i) => (
-          <div key={i} className="bg-muted rounded-md p-2">
+        {value.map((item) => (
+          <div key={JSON.stringify(item)} className="bg-muted rounded-md p-2">
             {typeof item === "object" && item !== null ? (
               <ObjectRenderer data={item as Record<string, unknown>} />
             ) : (

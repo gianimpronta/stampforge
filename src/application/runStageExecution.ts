@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { StageExecution } from "../domain/pipeline/StageExecution";
 import type { StageTargetType } from "../domain/pipeline/StageExecution";
 import type { StageExecutionRepository } from "../domain/pipeline/StageExecutionRepository";

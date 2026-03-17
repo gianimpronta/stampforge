@@ -1,4 +1,4 @@
-import { randomUUID } from "crypto";
+import { randomUUID } from "node:crypto";
 import { GeneratedImage } from "../domain/generation/GeneratedImage";
 import type { GeneratedImageRepository } from "../domain/generation/GeneratedImageRepository";
 import type { ImageGenerationProvider } from "../domain/providers/ImageGenerationProvider";
