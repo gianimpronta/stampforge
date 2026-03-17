@@ -21,12 +21,8 @@ export function createGeminiTextProvider(config: GeminiTextProviderConfig): LLMP
           ? { systemInstruction: request.systemPrompt }
           : {}),
         generationConfig: {
-          ...(request.temperature !== undefined
-            ? { temperature: request.temperature }
-            : {}),
-          ...(request.maxTokens !== undefined
-            ? { maxOutputTokens: request.maxTokens }
-            : {}),
+          ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+          ...(request.maxTokens === undefined ? {} : { maxOutputTokens: request.maxTokens }),
         },
       });
 

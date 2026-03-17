@@ -21,7 +21,7 @@ function extractUpstreamContent(
     | Record<string, { content?: string }>
     | undefined;
   if (!upstream?.[stageKey]?.content) return "";
-  return upstream[stageKey].content!;
+  return upstream[stageKey].content ?? "";
 }
 
 function formatUpstreamOutputs(

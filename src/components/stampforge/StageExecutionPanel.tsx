@@ -76,13 +76,13 @@ function parseContent(output: Record<string, unknown>): Record<string, unknown> 
 
 function formatLabel(key: string): string {
   return key
-    .replace(/([A-Z])/g, " $1")
-    .replace(/[_-]/g, " ")
+    .replaceAll(/([A-Z])/g, " $1")
+    .replaceAll(/[_-]/g, " ")
     .replace(/^\w/, (c) => c.toUpperCase())
     .trim();
 }
 
-function ValueRenderer({ value }: { value: unknown }) {
+function ValueRenderer({ value }: { readonly value: unknown }) {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground italic">—</span>;
   }
@@ -133,10 +133,10 @@ function ValueRenderer({ value }: { value: unknown }) {
     return <ObjectRenderer data={value as Record<string, unknown>} />;
   }
 
-  return <span>{String(value)}</span>;
+  return <span>{typeof value !== "object" ? String(value) : JSON.stringify(value)}</span>;
 }
 
-function ObjectRenderer({ data }: { data: Record<string, unknown> }) {
+function ObjectRenderer({ data }: { readonly data: Record<string, unknown> }) {
   return (
     <div className="space-y-1">
       {Object.entries(data).map(([key, val]) => (
@@ -149,7 +149,7 @@ function ObjectRenderer({ data }: { data: Record<string, unknown> }) {
   );
 }
 
-function OutputDisplay({ output }: { output: Record<string, unknown> }) {
+function OutputDisplay({ output }: { readonly output: Record<string, unknown> }) {
   const parsed = parseContent(output);
   const provider = output.provider as string | undefined;
   const model = output.model as string | undefined;

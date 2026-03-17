@@ -115,7 +115,7 @@ export function ExecutionDetail({ execution: initialExecution }: ExecutionDetail
         <div>
           <p className="text-muted-foreground mb-1 font-medium">Prompt usado</p>
           <div className="bg-muted rounded-md p-3 text-xs whitespace-pre-wrap">
-            {String(promptUsed)}
+            {typeof promptUsed === "string" ? promptUsed : JSON.stringify(promptUsed)}
           </div>
         </div>
       )}
