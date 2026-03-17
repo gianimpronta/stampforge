@@ -129,11 +129,11 @@ function ValueRenderer({ value }: { readonly value: unknown }) {
     );
   }
 
-  if (typeof value === "object") {
-    return <ObjectRenderer data={value as Record<string, unknown>} />;
-  }
-
-  return <span>{String(value)}</span>;
+  return typeof value === "object" ? (
+    <ObjectRenderer data={value as Record<string, unknown>} />
+  ) : (
+    <span>{String(value)}</span>
+  );
 }
 
 function ObjectRenderer({ data }: { readonly data: Record<string, unknown> }) {

@@ -59,4 +59,48 @@ describe("pipeline API use cases", () => {
 
     expect(timeline.length).toBeGreaterThan(0);
   });
+
+  it("returns timeline sorted chronologically when multiple executions exist", async () => {
+    const repo = new InMemoryStageExecutionRepository();
+    const now = Date.now();
+    const older = StageExecution.reconstruct({
+      id: "exec-old",
+      stageKey: "design-concept",
+      targetId: "item-2",
+      targetType: "design_item",
+      status: "completed",
+      startedAt: new Date(now - 10000),
+      inputSnapshot: {},
+    });
+    const newer = StageExecution.reconstruct({
+      id: "exec-new",
+      stageKey: "theme-definition",
+      targetId: "item-2",
+      targetType: "design_item",
+      status: "completed",
+      startedAt: new Date(now),
+      inputSnapshot: {},
+    });
+    await repo.save(newer);
+    await repo.save(older);
+
+    const timeline = await getPipelineTimeline({ targetId: "item-2" }, { stageExecutionRepo: repo });
+
+    expect(timeline[0].id).toBe("exec-old");
+    expect(timeline[1].id).toBe("exec-new");
+  });
+
+  it("throws when approving a non-existent execution", async () => {
+    const repo = new InMemoryStageExecutionRepository();
+    await expect(
+      approveStageExecution({ executionId: "missing", actorId: "user-1" }, { stageExecutionRepo: repo }),
+    ).rejects.toThrow('StageExecution not found: "missing"');
+  });
+
+  it("throws when rejecting a non-existent execution", async () => {
+    const repo = new InMemoryStageExecutionRepository();
+    await expect(
+      rejectStageExecution({ executionId: "missing", actorId: "user-1", reason: "test" }, { stageExecutionRepo: repo }),
+    ).rejects.toThrow('StageExecution not found: "missing"');
+  });
 });

@@ -87,6 +87,35 @@ describe("image traceability", () => {
     expect(images[0].promptUsed).toBe("retro board game shield");
   });
 
+  it("generateVisualVariations uses 'png' as fallback extension when mimeType has no slash", async () => {
+    const { generateVisualVariations } = await import("../../src/application/generateVisualVariations");
+    const repo = new InMemoryGeneratedImageRepository();
+
+    const fakeImageProvider = {
+      async generateImages() {
+        return {
+          images: [{ data: Buffer.from("img-data"), mimeType: "png" }],
+          provider: "stub",
+          model: "stub-1",
+        };
+      },
+    };
+    const savedPaths: string[] = [];
+    const fakeStorage = {
+      async save(path: string) { savedPaths.push(path); return path; },
+      async read() { return Buffer.from(""); },
+      getUrl(path: string) { return `/files/${path}`; },
+      async exists() { return false; },
+    };
+
+    await generateVisualVariations(
+      { designItemId: "item-ext", executionId: "exec-ext", prompt: "test", count: 1 },
+      { generatedImageRepo: repo, imageProvider: fakeImageProvider, storage: fakeStorage },
+    );
+
+    expect(savedPaths[0]).toMatch(/\.png$/);
+  });
+
   it("listGeneratedImages returns images for design item", async () => {
     const { listGeneratedImages } = await import("../../src/application/listGeneratedImages");
     const repo = new InMemoryGeneratedImageRepository();
