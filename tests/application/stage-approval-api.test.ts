@@ -63,7 +63,14 @@ describe("pipeline API use cases", () => {
   it("returns timeline sorted chronologically when multiple executions exist", async () => {
     const repo = new InMemoryStageExecutionRepository();
     const now = Date.now();
+    const baseProps = {
+      outputSnapshot: null, completedAt: null,
+      approvedBy: null, approvedAt: null,
+      rejectedBy: null, rejectedAt: null,
+      rejectionReason: null, failureReason: null,
+    };
     const older = StageExecution.reconstruct({
+      ...baseProps,
       id: "exec-old",
       stageKey: "design-concept",
       targetId: "item-2",
@@ -73,6 +80,7 @@ describe("pipeline API use cases", () => {
       inputSnapshot: {},
     });
     const newer = StageExecution.reconstruct({
+      ...baseProps,
       id: "exec-new",
       stageKey: "theme-definition",
       targetId: "item-2",

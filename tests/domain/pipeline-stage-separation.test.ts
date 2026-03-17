@@ -33,6 +33,14 @@ describe("PipelineStage and StageExecution", () => {
       status: "approved",
       startedAt,
       inputSnapshot: { some: "data" },
+      outputSnapshot: null,
+      completedAt: null,
+      approvedBy: null,
+      approvedAt: null,
+      rejectedBy: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      failureReason: null,
     });
 
     expect(execution.id).toBe("exec-restored");
