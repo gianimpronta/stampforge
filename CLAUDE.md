@@ -140,41 +140,32 @@ Preferred layers:
 
 ## Git Workflow
 
-Prefer a small, linear workflow:
+The project uses GitHub Flow with squash merges. Full details in `docs/git-workflow.md`.
 
-1. sync with `main`
-2. create or switch to a focused working branch
-3. implement one task or a small coherent slice
-4. run the narrowest relevant tests first
-5. commit
-6. repeat
-7. run broader verification before merging
+Branch naming:
 
-Recommended branch naming:
+- `feat/<topic>` — new functionality
+- `fix/<topic>` — bug fixes
+- `chore/<topic>` — infra, config, tooling
+- `docs/<topic>` — documentation
+- `test/<topic>` — isolated tests
+- `claude/<topic>` — AI-generated branches
 
-- `feat/<topic>`
-- `fix/<topic>`
-- `chore/<topic>`
-- `docs/<topic>`
+Cycle per task:
 
-Examples:
+1. create issue → assign to milestone → move to Todo in Project
+2. `gh issue develop <n> --checkout` to create the branch
+3. implement in small focused commits
+4. `gh pr create --fill` with `Closes #<n>` in the body
+5. CI passes → squash merge → branch and issue closed automatically
 
-- `feat/pipeline-domain`
-- `feat/stage-approval-api`
-- `fix/stage-eligibility-rule`
+`main` is always stable. Push directly to `main` is blocked by branch protection.
 
 ## Commit Best Practices
 
-Commits should be:
+Commits should be small, focused, reversible, and easy to review. One logical change per commit.
 
-- small
-- focused
-- reversible
-- easy to review
-
-Prefer one logical change per commit. Do not mix unrelated refactors, formatting churn, and feature work in the same commit.
-
-Recommended commit style:
+Use Conventional Commits (enforced by commitlint in CI):
 
 - `feat: ...`
 - `fix: ...`
@@ -204,6 +195,37 @@ Before committing:
 - run the most relevant tests for the change
 - make sure the commit message matches the actual scope
 
+## Releases
+
+Releases are triggered by semver tags on `main`:
+
+| Milestone | Tag |
+|---|---|
+| v1-infra | `v0.1.0` |
+| v1-domain | `v0.2.0` |
+| v1-pipeline | `v0.3.0` |
+| v1-ui | `v1.0.0` |
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The release workflow automatically creates a GitHub Release with changelog and publishes a versioned Docker image to GHCR.
+
+## Project Management
+
+Issues are tracked in GitHub Project "StampForge V1" (project #5).
+
+Milestones:
+
+- `v1-infra` — containerization and setup
+- `v1-domain` — entities and domain rules
+- `v1-pipeline` — stages and approval flow
+- `v1-ui` — operational interface
+
+Labels for issues and PRs: `pipeline`, `domain`, `infra`, `api`, `worker`, `frontend`, `test`, `chore`, `bug`, `enhancement`.
+
 ## Guardrails
 
 - Do not collapse `PipelineStage` and `StageExecution`
@@ -219,3 +241,4 @@ For architecture and implementation planning, use these files as the primary ref
 
 - `docs/superpowers/specs/2026-03-12-stampforge-architecture-design.md`
 - `docs/superpowers/plans/2026-03-12-stampforge-v1-implementation.md`
+- `docs/git-workflow.md`

@@ -208,7 +208,8 @@ A pipeline roda no GitHub Actions com os seguintes jobs:
 | `e2e` | push/PR | Playwright (requer build+lint+test+security) |
 | `sonar` | push/PR | SonarCloud quality gate (requer test) |
 | `codeql` | push/PR/semanal | SAST CodeQL |
-| `docker` | merge em main | Build + push ghcr.io |
+| `release` | push de tag `v*` | Cria GitHub Release com changelog |
+| `docker` | push de tag `v*` | Build + push ghcr.io com tags versionadas |
 
 **Dependabot** cria PRs automáticos às segundas-feiras para dependências npm e GitHub Actions.
 
@@ -222,4 +223,4 @@ A pipeline roda no GitHub Actions com os seguintes jobs:
 4. Use commits convencionais: `feat:`, `fix:`, `chore:`, `docs:`, `test:`, `refactor:`
 5. Abra um PR — a pipeline valida automaticamente
 
-Consulte [`CLAUDE.md`](./CLAUDE.md) para as instruções completas de desenvolvimento.
+Consulte [`docs/git-workflow.md`](./docs/git-workflow.md) para o modelo de branches, ciclo de trabalho e política de releases.
