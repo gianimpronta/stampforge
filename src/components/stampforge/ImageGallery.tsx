@@ -18,7 +18,7 @@ import {
 
 interface GeneratedImageData {
   id: string;
-  designItemId: string;
+  readonly designItemId: string;
   sourceExecutionId: string;
   filePath: string;
   promptUsed: string;
@@ -30,8 +30,8 @@ interface GeneratedImageData {
 }
 
 interface ImageGalleryProps {
-  designItemId: string;
-  collectionId: string;
+  readonly designItemId: string;
+  readonly collectionId: string;
 }
 
 const STATUS_LABELS: Record<GeneratedImageData["status"], string> = {

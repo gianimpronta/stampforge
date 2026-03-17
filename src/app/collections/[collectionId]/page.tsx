@@ -6,7 +6,7 @@ import { DesignItemList } from "@/components/stampforge/DesignItemList";
 import { collectionRepo } from "@/lib/server/dependencies";
 
 interface CollectionDetailPageProps {
-  params: Promise<{ collectionId: string }>;
+  readonly params: Promise<{ readonly collectionId: string }>;
 }
 
 export default async function CollectionDetailPage({

@@ -23,13 +23,13 @@ import {
 
 interface DesignItem {
   id: string;
-  collectionId: string;
+  readonly collectionId: string;
   name: string;
   createdAt: string;
 }
 
 interface DesignItemListProps {
-  collectionId: string;
+  readonly collectionId: string;
 }
 
 export function DesignItemList({ collectionId }: DesignItemListProps) {

@@ -7,7 +7,7 @@ import { BackButton } from "@/components/stampforge/BackButton";
 import { stageExecutionRepo } from "@/lib/server/dependencies";
 
 interface ExecutionDetailPageProps {
-  params: Promise<{ executionId: string }>;
+  readonly params: Promise<{ readonly executionId: string }>;
 }
 
 export default async function ExecutionDetailPage({

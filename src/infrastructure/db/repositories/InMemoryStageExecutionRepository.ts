@@ -2,7 +2,7 @@ import { StageExecution } from "../../../domain/pipeline/StageExecution";
 import { StageExecutionRepository } from "../../../domain/pipeline/StageExecutionRepository";
 
 export class InMemoryStageExecutionRepository implements StageExecutionRepository {
-  private store = new Map<string, StageExecution>();
+  private readonly store = new Map<string, StageExecution>();
 
   async save(execution: StageExecution): Promise<void> {
     this.store.set(execution.id, execution);

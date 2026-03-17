@@ -6,7 +6,7 @@ import { ImageGallery } from "@/components/stampforge/ImageGallery";
 import { designItemRepo } from "@/lib/server/dependencies";
 
 interface ImagesPageProps {
-  params: Promise<{ collectionId: string; designItemId: string }>;
+  readonly params: Promise<{ readonly collectionId: string; readonly designItemId: string }>;
 }
 
 export default async function ImagesPage({ params }: ImagesPageProps) {

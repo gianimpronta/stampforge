@@ -2,7 +2,7 @@ import { Collection } from "../../../domain/collections/Collection";
 import { CollectionRepository } from "../../../domain/collections/CollectionRepository";
 
 export class InMemoryCollectionRepository implements CollectionRepository {
-  private store = new Map<string, Collection>();
+  private readonly store = new Map<string, Collection>();
 
   async save(collection: Collection): Promise<void> {
     this.store.set(collection.id, collection);

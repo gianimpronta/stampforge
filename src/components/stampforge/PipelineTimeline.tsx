@@ -152,13 +152,12 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
         const execution = getLatestExecutionForStage(stage.key);
         const eligible = isStageEligible(stage);
         const isTriggering = triggering === stage.key;
-        const hasExecution = execution !== undefined;
         const isRunning = execution?.status === "running";
 
         return (
           <Card
             key={stage.key}
-            className={`p-4 transition-opacity ${!eligible && !hasExecution ? "opacity-50" : ""}`}
+            className={`p-4 transition-opacity ${!eligible && !execution ? "opacity-50" : ""}`}
           >
             <div className="flex items-center justify-between gap-4">
               <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -167,7 +166,7 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
                 </span>
                 <div className="min-w-0">
                   <p className="truncate font-medium">{stage.name}</p>
-                  {!eligible && !hasExecution && (
+                  {!eligible && !execution && (
                     <p className="text-muted-foreground text-xs">
                       Aguardando aprovação de dependências
                     </p>
@@ -176,10 +175,10 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
               </div>
 
               <div className="flex shrink-0 items-center gap-2">
-                {hasExecution ? (
+                {execution ? (
                   <>
-                    <Badge variant={STATUS_VARIANTS[execution!.status]}>
-                      {STATUS_LABELS[execution!.status]}
+                    <Badge variant={STATUS_VARIANTS[execution.status]}>
+                      {STATUS_LABELS[execution.status]}
                     </Badge>
                     {!isRunning && (
                       <>
@@ -187,12 +186,12 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
                           variant="outline"
                           size="sm"
                           onClick={() =>
-                            handleOpenPanel(execution!, stage.name)
+                            handleOpenPanel(execution, stage.name)
                           }
                         >
                           Detalhes
                         </Button>
-                        <Link href={`/executions/${execution!.id}`}>
+                        <Link href={`/executions/${execution.id}`}>
                           <Button variant="ghost" size="sm">
                             Ver execução
                           </Button>
@@ -200,8 +199,8 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
                       </>
                     )}
                     {stage.key === "visual-variation-generation" &&
-                      (execution!.status === "completed" ||
-                        execution!.status === "approved") && (
+                      (execution.status === "completed" ||
+                        execution.status === "approved") && (
                         <Link
                           href={`/collections/${collectionId}/items/${designItemId}/images`}
                         >
@@ -210,8 +209,8 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
                           </Button>
                         </Link>
                       )}
-                    {(execution!.status === "completed" ||
-                      execution!.status === "approved") && (
+                    {(execution.status === "completed" ||
+                      execution.status === "approved") && (
                       <Button
                         variant="ghost"
                         size="sm"
@@ -221,8 +220,8 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
                         {isTriggering ? "Executando..." : "Re-executar"}
                       </Button>
                     )}
-                    {(execution!.status === "rejected" ||
-                      execution!.status === "failed") && (
+                    {(execution.status === "rejected" ||
+                      execution.status === "failed") && (
                       <Button
                         size="sm"
                         disabled={isTriggering}

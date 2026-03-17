@@ -6,7 +6,7 @@ import { PipelineTimeline } from "@/components/stampforge/PipelineTimeline";
 import { designItemRepo } from "@/lib/server/dependencies";
 
 interface PipelinePageProps {
-  params: Promise<{ collectionId: string; designItemId: string }>;
+  readonly params: Promise<{ readonly collectionId: string; readonly designItemId: string }>;
 }
 
 export default async function PipelinePage({ params }: PipelinePageProps) {
