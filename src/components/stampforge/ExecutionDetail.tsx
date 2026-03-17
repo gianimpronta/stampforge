@@ -1,14 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   type StageExecutionStatus,
   STATUS_LABELS,
   STATUS_VARIANTS,
+  ApproveRejectActions,
 } from "./StageExecutionPanel";
 
 export interface ExecutionDetailData {
@@ -35,64 +33,6 @@ interface ExecutionDetailProps {
 
 export function ExecutionDetail({ execution: initialExecution }: ExecutionDetailProps) {
   const [execution, setExecution] = useState<ExecutionDetailData>(initialExecution);
-  const [approving, setApproving] = useState(false);
-  const [rejecting, setRejecting] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [showRejectForm, setShowRejectForm] = useState(false);
-  const [actionError, setActionError] = useState<string | null>(null);
-
-  async function handleApprove() {
-    setApproving(true);
-    setActionError(null);
-    try {
-      const res = await fetch(
-        `/api/pipeline/executions/${execution.id}/approve`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ actorId: "operator" }),
-        },
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Erro ao aprovar");
-      }
-      const updated: ExecutionDetailData = await res.json();
-      setExecution(updated);
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Erro ao aprovar");
-    } finally {
-      setApproving(false);
-    }
-  }
-
-  async function handleReject() {
-    if (!rejectReason.trim()) return;
-    setRejecting(true);
-    setActionError(null);
-    try {
-      const res = await fetch(
-        `/api/pipeline/executions/${execution.id}/reject`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ actorId: "operator", reason: rejectReason }),
-        },
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Erro ao reprovar");
-      }
-      const updated: ExecutionDetailData = await res.json();
-      setExecution(updated);
-      setShowRejectForm(false);
-      setRejectReason("");
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : "Erro ao reprovar");
-    } finally {
-      setRejecting(false);
-    }
-  }
 
   const promptUsed =
     execution.outputSnapshot?.prompt ??
@@ -196,59 +136,13 @@ export function ExecutionDetail({ execution: initialExecution }: ExecutionDetail
         </div>
       )}
 
-      {actionError && (
-        <p className="text-destructive text-sm">{actionError}</p>
-      )}
-
       {execution.status === "completed" && (
-        <div className="space-y-2 border-t pt-4">
-          {showRejectForm ? (
-            <div className="space-y-2">
-              <Label htmlFor="reject-reason">Motivo da reprovação</Label>
-              <Input
-                id="reject-reason"
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Descreva o motivo..."
-              />
-              <div className="flex gap-2">
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  disabled={!rejectReason.trim() || rejecting}
-                  onClick={handleReject}
-                >
-                  {rejecting ? "Reprovando..." : "Confirmar Reprovação"}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setShowRejectForm(false);
-                    setRejectReason("");
-                  }}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex gap-2">
-              <Button size="sm" disabled={approving} onClick={handleApprove}>
-                {approving ? "Aprovando..." : "Aprovar"}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRejectForm(true)}
-              >
-                Reprovar
-              </Button>
-            </div>
-          )}
-        </div>
+        <ApproveRejectActions
+          executionId={execution.id}
+          onApproved={(d) => setExecution(d as ExecutionDetailData)}
+          onRejected={(d) => setExecution(d as ExecutionDetailData)}
+        />
       )}
-
     </div>
   );
 }

@@ -192,13 +192,17 @@ function OutputDisplay({ output }: { output: Record<string, unknown> }) {
   );
 }
 
-export function StageExecutionPanel({
-  execution,
-  stageName,
-  open,
-  onClose,
-  onActionDone,
-}: StageExecutionPanelProps) {
+interface ApproveRejectActionsProps {
+  readonly executionId: string;
+  readonly onApproved: (updated: unknown) => void;
+  readonly onRejected: (updated: unknown) => void;
+}
+
+export function ApproveRejectActions({
+  executionId,
+  onApproved,
+  onRejected,
+}: ApproveRejectActionsProps) {
   const [approving, setApproving] = useState(false);
   const [rejecting, setRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
@@ -210,7 +214,7 @@ export function StageExecutionPanel({
     setActionError(null);
     try {
       const res = await fetch(
-        `/api/pipeline/executions/${execution.id}/approve`,
+        `/api/pipeline/executions/${executionId}/approve`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -221,8 +225,8 @@ export function StageExecutionPanel({
         const data = await res.json();
         throw new Error(data.error ?? "Erro ao aprovar");
       }
-      onActionDone();
-      onClose();
+      const updated = await res.json();
+      onApproved(updated);
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Erro ao aprovar");
     } finally {
@@ -236,7 +240,7 @@ export function StageExecutionPanel({
     setActionError(null);
     try {
       const res = await fetch(
-        `/api/pipeline/executions/${execution.id}/reject`,
+        `/api/pipeline/executions/${executionId}/reject`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -247,17 +251,77 @@ export function StageExecutionPanel({
         const data = await res.json();
         throw new Error(data.error ?? "Erro ao reprovar");
       }
-      onActionDone();
-      onClose();
+      const updated = await res.json();
+      onRejected(updated);
+      setShowRejectForm(false);
+      setRejectReason("");
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Erro ao reprovar");
     } finally {
       setRejecting(false);
-      setShowRejectForm(false);
-      setRejectReason("");
     }
   }
 
+  return (
+    <div className="space-y-2 border-t pt-4">
+      {actionError && (
+        <p className="text-destructive text-sm">{actionError}</p>
+      )}
+      {showRejectForm ? (
+        <div className="space-y-2">
+          <Label htmlFor="reject-reason">Motivo da reprovação</Label>
+          <Input
+            id="reject-reason"
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Descreva o motivo..."
+          />
+          <div className="flex gap-2">
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={!rejectReason.trim() || rejecting}
+              onClick={handleReject}
+            >
+              {rejecting ? "Reprovando..." : "Confirmar Reprovação"}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setShowRejectForm(false);
+                setRejectReason("");
+              }}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex gap-2">
+          <Button size="sm" disabled={approving} onClick={handleApprove}>
+            {approving ? "Aprovando..." : "Aprovar"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowRejectForm(true)}
+          >
+            Reprovar
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function StageExecutionPanel({
+  execution,
+  stageName,
+  open,
+  onClose,
+  onActionDone,
+}: StageExecutionPanelProps) {
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
@@ -348,61 +412,12 @@ export function StageExecutionPanel({
             </div>
           )}
 
-          {actionError && (
-            <p className="text-destructive text-sm">{actionError}</p>
-          )}
-
           {execution.status === "completed" && (
-            <div className="space-y-2 border-t pt-4">
-              {showRejectForm ? (
-                <div className="space-y-2">
-                  <Label htmlFor="reject-reason">Motivo da reprovação</Label>
-                  <Input
-                    id="reject-reason"
-                    value={rejectReason}
-                    onChange={(e) => setRejectReason(e.target.value)}
-                    placeholder="Descreva o motivo..."
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      disabled={!rejectReason.trim() || rejecting}
-                      onClick={handleReject}
-                    >
-                      {rejecting ? "Reprovando..." : "Confirmar Reprovação"}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setShowRejectForm(false);
-                        setRejectReason("");
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    disabled={approving}
-                    onClick={handleApprove}
-                  >
-                    {approving ? "Aprovando..." : "Aprovar"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowRejectForm(true)}
-                  >
-                    Reprovar
-                  </Button>
-                </div>
-              )}
-            </div>
+            <ApproveRejectActions
+              executionId={execution.id}
+              onApproved={() => { onActionDone(); onClose(); }}
+              onRejected={() => { onActionDone(); onClose(); }}
+            />
           )}
         </div>
       </DialogContent>
