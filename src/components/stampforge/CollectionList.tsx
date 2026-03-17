@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,7 +30,7 @@ export function CollectionList() {
   const [name, setName] = useState("");
   const [briefing, setBriefing] = useState("");
 
-  async function fetchCollections() {
+  const fetchCollections = useCallback(async () => {
     try {
       const res = await fetch("/api/collections");
       if (!res.ok) throw new Error("Falha ao carregar coleções");
@@ -41,11 +41,11 @@ export function CollectionList() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     fetchCollections();
-  }, []);
+  }, [fetchCollections]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

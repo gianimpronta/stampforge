@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -40,7 +40,7 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
 
-  async function fetchItems() {
+  const fetchItems = useCallback(async () => {
     try {
       const res = await fetch(
         `/api/collections/${collectionId}/design-items`,
@@ -53,11 +53,11 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [collectionId]);
 
   useEffect(() => {
     fetchItems();
-  }, [collectionId]);
+  }, [fetchItems]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

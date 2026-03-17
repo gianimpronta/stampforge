@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -136,11 +137,15 @@ export function ImageGallery({ designItemId, collectionId }: ImageGalleryProps) 
           {images.map((image) => (
             <Card key={image.id} className="overflow-hidden">
               {image.status === "ready" ? (
-                <img
-                  src={`/api/assets/${image.filePath}`}
-                  alt={image.promptUsed}
-                  className="h-48 w-full object-cover"
-                />
+                <div className="relative h-48 w-full">
+                  <Image
+                    src={`/api/assets/${image.filePath}`}
+                    alt={image.promptUsed}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                </div>
               ) : (
                 <div className="bg-muted flex h-48 items-center justify-center">
                   <p className="text-muted-foreground text-xs">
