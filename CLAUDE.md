@@ -226,6 +226,18 @@ Milestones:
 
 Labels for issues and PRs: `pipeline`, `domain`, `infra`, `api`, `worker`, `frontend`, `test`, `chore`, `bug`, `enhancement`.
 
+## Code Quality
+
+Before recommending any push or PR, verify code quality via SonarCloud:
+
+1. Run the scanner: `"$USERPROFILE/tools/sonar-scanner-7.1.0.4889-windows-x64/bin/sonar-scanner.bat"`
+2. After scanning, use the SonarQube MCP tools to check the Quality Gate status and fetch any issues.
+3. If SonarQube reports bugs, vulnerabilities, or code smells, fix them and re-scan. Maximum **3 fix-scan cycles**.
+4. If issues persist after 3 cycles, stop and report the remaining issues with analysis of why they are recurring. Do not keep looping.
+5. When fixing issues, refactor holistically — don't fix rules one at a time in isolation. Consider how the fix affects the broader module design.
+6. If low test coverage is causing a failed Quality Gate, treat it as a blocking issue and write the missing tests.
+7. Only recommend pushing when the Quality Gate **PASSES**.
+
 ## Guardrails
 
 - Do not collapse `PipelineStage` and `StageExecution`
