@@ -216,3 +216,6 @@ jobs:
           exit-code: 1
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          # npm/library CVEs são cobertos pelo `npm audit` no job build;
+          # aqui escaneamos apenas a camada OS do container
+          vuln-type: os

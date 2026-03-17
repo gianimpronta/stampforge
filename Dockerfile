@@ -16,8 +16,13 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# Atualiza pacotes Alpine para eliminar CVEs com fix disponível
-RUN apk upgrade --no-cache
+# Atualiza pacotes Alpine e remove npm (não necessário em runtime);
+# os CVEs detectados pelo Trivy estão todos em deps internas do npm,
+# não na aplicação — o runner usa apenas `node server.js`
+RUN apk upgrade --no-cache && \
+    rm -rf /usr/local/lib/node_modules/npm \
+           /usr/local/bin/npm \
+           /usr/local/bin/npx
 
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
