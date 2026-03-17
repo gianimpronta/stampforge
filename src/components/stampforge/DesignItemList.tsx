@@ -39,6 +39,7 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchItems = useCallback(async () => {
     try {
@@ -62,6 +63,7 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
+    setFormError(null);
     try {
       const res = await fetch(
         `/api/collections/${collectionId}/design-items`,
@@ -79,7 +81,7 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
       setOpen(false);
       await fetchItems();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao criar item");
+      setFormError(err instanceof Error ? err.message : "Erro ao criar item");
     } finally {
       setSubmitting(false);
     }
@@ -116,6 +118,9 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
                   required
                 />
               </div>
+              {formError && (
+                <p className="text-destructive text-sm">{formError}</p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"

@@ -31,6 +31,7 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [triggering, setTriggering] = useState<string | null>(null);
+  const [triggerError, setTriggerError] = useState<string | null>(null);
   const [selectedExecution, setSelectedExecution] =
     useState<StageExecutionData | null>(null);
   const [selectedStageName, setSelectedStageName] = useState<string>("");
@@ -102,6 +103,7 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
 
   async function handleTrigger(stageKey: string) {
     setTriggering(stageKey);
+    setTriggerError(null);
     try {
       const targetId = getTargetIdForStage(stageKey);
       const res = await fetch("/api/pipeline/trigger", {
@@ -115,7 +117,7 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
       }
       await fetchData();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao executar estágio");
+      setTriggerError(err instanceof Error ? err.message : "Erro ao executar estágio");
     } finally {
       setTriggering(null);
     }
@@ -142,6 +144,9 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
   return (
     <div className="space-y-2">
       <h2 className="mb-4 text-lg font-semibold">Estágios do Pipeline</h2>
+      {triggerError && (
+        <p className="text-destructive text-sm">{triggerError}</p>
+      )}
 
       {catalog.map((stage) => {
         const execution = getLatestExecutionForStage(stage.key);

@@ -6,6 +6,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface GeneratedImageData {
   id: string;
@@ -45,6 +54,10 @@ export function ImageGallery({ designItemId, collectionId }: ImageGalleryProps) 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [generateOpen, setGenerateOpen] = useState(false);
+  const [generateExecutionId, setGenerateExecutionId] = useState("");
+  const [generatePrompt, setGeneratePrompt] = useState("");
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
   const fetchImages = useCallback(async () => {
     try {
@@ -64,28 +77,27 @@ export function ImageGallery({ designItemId, collectionId }: ImageGalleryProps) 
   }, [fetchImages]);
 
   async function handleGenerate() {
-    const executionId = prompt("ID da execução de origem:");
-    if (!executionId?.trim()) return;
-    const promptText = prompt("Prompt para geração:");
-    if (!promptText?.trim()) return;
-
     setGenerating(true);
+    setGenerateError(null);
     try {
       const res = await fetch(`/api/design-items/${designItemId}/images`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          executionId: executionId.trim(),
-          prompt: promptText.trim(),
+          executionId: generateExecutionId.trim(),
+          prompt: generatePrompt.trim(),
         }),
       });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error ?? "Erro ao gerar imagens");
       }
+      setGenerateExecutionId("");
+      setGeneratePrompt("");
+      setGenerateOpen(false);
       await fetchImages();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao gerar imagens");
+      setGenerateError(err instanceof Error ? err.message : "Erro ao gerar imagens");
     } finally {
       setGenerating(false);
     }
@@ -116,9 +128,53 @@ export function ImageGallery({ designItemId, collectionId }: ImageGalleryProps) 
               ← Pipeline
             </Button>
           </Link>
-          <Button size="sm" disabled={generating} onClick={handleGenerate}>
-            {generating ? "Gerando..." : "Gerar Variações"}
-          </Button>
+          <Dialog open={generateOpen} onOpenChange={setGenerateOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">Gerar Variações</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Gerar Variações</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="gen-execution-id">ID da execução de origem</Label>
+                  <Input
+                    id="gen-execution-id"
+                    value={generateExecutionId}
+                    onChange={(e) => setGenerateExecutionId(e.target.value)}
+                    placeholder="uuid da execução..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gen-prompt">Prompt para geração</Label>
+                  <Input
+                    id="gen-prompt"
+                    value={generatePrompt}
+                    onChange={(e) => setGeneratePrompt(e.target.value)}
+                    placeholder="Descreva a imagem..."
+                  />
+                </div>
+                {generateError && (
+                  <p className="text-destructive text-sm">{generateError}</p>
+                )}
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setGenerateOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    disabled={generating || !generateExecutionId.trim() || !generatePrompt.trim()}
+                    onClick={handleGenerate}
+                  >
+                    {generating ? "Gerando..." : "Gerar"}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

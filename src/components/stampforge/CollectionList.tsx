@@ -29,6 +29,7 @@ export function CollectionList() {
   const [submitting, setSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [briefing, setBriefing] = useState("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const fetchCollections = useCallback(async () => {
     try {
@@ -50,6 +51,7 @@ export function CollectionList() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSubmitting(true);
+    setFormError(null);
     try {
       const res = await fetch("/api/collections", {
         method: "POST",
@@ -65,7 +67,7 @@ export function CollectionList() {
       setOpen(false);
       await fetchCollections();
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Erro ao criar coleção");
+      setFormError(err instanceof Error ? err.message : "Erro ao criar coleção");
     } finally {
       setSubmitting(false);
     }
@@ -118,6 +120,9 @@ export function CollectionList() {
                   className="border-input bg-background ring-offset-background placeholder:text-muted-foreground focus-visible:ring-ring flex min-h-[80px] w-full rounded-md border px-3 py-2 text-sm focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
+              {formError && (
+                <p className="text-destructive text-sm">{formError}</p>
+              )}
               <div className="flex justify-end gap-2">
                 <Button
                   type="button"
