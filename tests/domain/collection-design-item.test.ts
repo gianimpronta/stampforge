@@ -73,6 +73,7 @@ describe("Collection and DesignItem", () => {
       id: "d1",
       collectionId: "col-1",
       name: "Test",
+      collectionContext: {},
       createdAt: new Date(),
       updatedAt: new Date(),
     });

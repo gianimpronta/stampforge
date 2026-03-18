@@ -221,7 +221,8 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
                       </Button>
                     )}
                     {(execution.status === "rejected" ||
-                      execution.status === "failed") && (
+                      execution.status === "failed" ||
+                      execution.status === "stale") && (
                       <Button
                         size="sm"
                         disabled={isTriggering}

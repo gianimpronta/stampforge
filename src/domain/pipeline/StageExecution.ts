@@ -3,7 +3,8 @@ export type StageExecutionStatus =
   | "completed"
   | "approved"
   | "rejected"
-  | "failed";
+  | "failed"
+  | "stale";
 
 export type StageTargetType = "collection" | "design_item";
 
@@ -171,6 +172,24 @@ export class StageExecution {
       rejectedBy: input.actorId,
       rejectedAt: new Date(),
       rejectionReason: input.reason,
+    });
+  }
+
+  /**
+   * Transitions from "approved" → "stale".
+   * Marks this execution as stale because a collectionContext dependency changed.
+   * Stale executions must be re-executed before downstream stages can run.
+   */
+  markStale(): StageExecution {
+    if (this.status !== "approved") {
+      throw new Error(
+        `Cannot mark a StageExecution as stale in status "${this.status}". Expected "approved".`,
+      );
+    }
+
+    return new StageExecution({
+      ...this.toProps(),
+      status: "stale",
     });
   }
 

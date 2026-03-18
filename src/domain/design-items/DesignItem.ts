@@ -1,7 +1,25 @@
+/**
+ * Entry in a DesignItem's collection context.
+ * References the specific collection StageExecution the item uses as its base.
+ * `styleIndex` is only relevant for visual-style-definition, selecting one
+ * of the N styles produced by that execution.
+ */
+export interface CollectionContextEntry {
+  executionId: string;
+  styleIndex?: number;
+}
+
+/**
+ * Maps collection stage keys to the specific execution the design item uses.
+ * Set by the operator before running any design_item stage.
+ */
+export type CollectionContext = Partial<Record<string, CollectionContextEntry>>;
+
 export interface DesignItemProps {
   id: string;
   collectionId: string;
   name: string;
+  collectionContext: CollectionContext;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -16,6 +34,7 @@ export class DesignItem {
   readonly id: string;
   readonly collectionId: string;
   readonly name: string;
+  readonly collectionContext: CollectionContext;
   readonly createdAt: Date;
   readonly updatedAt: Date;
 
@@ -23,6 +42,7 @@ export class DesignItem {
     this.id = props.id;
     this.collectionId = props.collectionId;
     this.name = props.name;
+    this.collectionContext = props.collectionContext;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -51,8 +71,33 @@ export class DesignItem {
       id: input.id,
       collectionId: input.collectionId,
       name: input.name,
+      collectionContext: {},
       createdAt: now,
       updatedAt: now,
     });
+  }
+
+  /**
+   * Returns a new DesignItem with the collectionContext updated.
+   * Does not validate that the referenced executions exist or are approved —
+   * that is the responsibility of the application layer.
+   */
+  setCollectionContext(context: CollectionContext): DesignItem {
+    return new DesignItem({
+      ...this.toProps(),
+      collectionContext: context,
+      updatedAt: new Date(),
+    });
+  }
+
+  private toProps(): DesignItemProps {
+    return {
+      id: this.id,
+      collectionId: this.collectionId,
+      name: this.name,
+      collectionContext: this.collectionContext,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+    };
   }
 }

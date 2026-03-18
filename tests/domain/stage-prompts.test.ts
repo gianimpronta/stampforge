@@ -3,7 +3,7 @@ import { getStagePromptConfig } from "../../src/domain/pipeline/stagePrompts";
 import { stageCatalog } from "../../src/domain/pipeline/stageCatalog";
 
 describe("getStagePromptConfig", () => {
-  it("retorna config para todos os 11 estágios do catálogo", () => {
+  it("retorna config para todos os 6 estágios do catálogo", () => {
     for (const stage of stageCatalog) {
       const config = getStagePromptConfig(stage.key);
       expect(config).toBeDefined();
@@ -14,9 +14,7 @@ describe("getStagePromptConfig", () => {
   });
 
   it("lança erro para estágio desconhecido", () => {
-    expect(() => getStagePromptConfig("nao-existe")).toThrow(
-      /unknown stage/i,
-    );
+    expect(() => getStagePromptConfig("nao-existe")).toThrow(/unknown stage/i);
   });
 
   it("system prompt contém regras de formatação JSON", () => {
@@ -41,17 +39,17 @@ describe("getStagePromptConfig", () => {
     expect(prompt).toContain("collection-briefing");
   });
 
-  it("game-selection inclui output do briefing no prompt", () => {
-    const config = getStagePromptConfig("game-selection");
+  it("game-universe-extraction inclui output do briefing no prompt", () => {
+    const config = getStagePromptConfig("game-universe-extraction");
     const prompt = config.buildUserPrompt({
-      stageKey: "game-selection",
-      targetId: "abc-123",
-      collection: { id: "abc-123", name: "Retro Games", briefing: "..." },
+      stageKey: "game-universe-extraction",
+      targetId: "col-1",
+      collection: { id: "col-1", name: "Retro Games", briefing: "..." },
       upstreamOutputs: {
         "collection-briefing": {
           content: JSON.stringify({
             interpretedTheme: "Jogos clássicos dos anos 80",
-            keywords: ["pixel", "arcade"],
+            selectedGames: [{ title: "Pac-Man" }],
           }),
         },
       },
@@ -59,34 +57,81 @@ describe("getStagePromptConfig", () => {
     expect(prompt).toContain("Jogos clássicos dos anos 80");
   });
 
-  it("master-prompt-assembly inclui outputs de todos os estágios upstream", () => {
+  it("visual-style-definition gera prompt com output de game-universe-extraction", () => {
+    const config = getStagePromptConfig("visual-style-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "visual-style-definition",
+      targetId: "col-1",
+      upstreamOutputs: {
+        "game-universe-extraction": {
+          content: JSON.stringify({ universes: [{ gameTitle: "Pac-Man" }] }),
+        },
+      },
+    });
+    expect(prompt).toContain("visual-style-definition");
+    expect(prompt).toContain("Pac-Man");
+  });
+
+  it("visual-style-definition outputSchema inclui 'styles'", () => {
+    const config = getStagePromptConfig("visual-style-definition");
+    expect(config.outputSchema).toHaveProperty("styles");
+  });
+
+  it("composition-definition usa collectionContextOutputs no prompt", () => {
+    const config = getStagePromptConfig("composition-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      designItem: { id: "item-1", name: "Camiseta Pac-Man", collectionId: "col-1" },
+      styleIndex: 2,
+      collectionContextOutputs: {
+        "collection-briefing": {
+          content: JSON.stringify({ interpretedTheme: "Jogos Arcade" }),
+        },
+        "game-universe-extraction": {
+          content: JSON.stringify({ universes: [{ gameTitle: "Pac-Man" }] }),
+        },
+        "visual-style-definition": {
+          content: JSON.stringify({
+            styles: [{ styleName: "Pixel Retro" }],
+          }),
+        },
+      },
+    });
+    expect(prompt).toContain("composition-definition");
+    expect(prompt).toContain("Camiseta Pac-Man");
+    expect(prompt).toContain("Jogos Arcade");
+  });
+
+  it("composition-definition exibe styleIndex correto", () => {
+    const config = getStagePromptConfig("composition-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      designItem: { id: "item-1", name: "Test", collectionId: "col-1" },
+      styleIndex: 1,
+      collectionContextOutputs: {},
+    });
+    expect(prompt).toContain("1");
+  });
+
+  it("master-prompt-assembly usa output de composition-definition", () => {
     const config = getStagePromptConfig("master-prompt-assembly");
-    const upstreamOutputs: Record<string, unknown> = {
-      "design-concept": { content: '{"conceptTitle":"Space Warrior"}' },
-      "theme-definition": { content: '{"themeName":"Retro Space"}' },
-      "visual-style-definition": {
-        content: '{"illustrationStyle":"pixel art"}',
-      },
-      "copy-generation": { content: '{"primaryText":"Game Over"}' },
-      "shirt-composition-definition": {
-        content: '{"printArea":"full front"}',
-      },
-      "production-constraints-definition": {
-        content: '{"maxColors":6}',
-      },
-    };
     const prompt = config.buildUserPrompt({
       stageKey: "master-prompt-assembly",
       targetId: "item-1",
       designItem: { id: "item-1", name: "Design 1", collectionId: "col-1" },
-      upstreamOutputs,
+      upstreamOutputs: {
+        "composition-definition": {
+          content: JSON.stringify({
+            conceptTitle: "Space Warrior",
+            copy: { primaryText: "Game Over" },
+          }),
+        },
+      },
     });
-    expect(prompt).toContain("design-concept");
-    expect(prompt).toContain("theme-definition");
-    expect(prompt).toContain("visual-style-definition");
-    expect(prompt).toContain("copy-generation");
-    expect(prompt).toContain("shirt-composition-definition");
-    expect(prompt).toContain("production-constraints-definition");
+    expect(prompt).toContain("master-prompt-assembly");
+    expect(prompt).toContain("Space Warrior");
   });
 
   it("visual-variation-generation é marcado como estágio de imagem", () => {
@@ -94,7 +139,7 @@ describe("getStagePromptConfig", () => {
     expect(config.isImageGeneration).toBe(true);
   });
 
-  it("estágios 1-10 NÃO são marcados como estágio de imagem", () => {
+  it("estágios 1-5 NÃO são marcados como estágio de imagem", () => {
     const nonImageStages = stageCatalog.filter(
       (s) => s.key !== "visual-variation-generation",
     );
@@ -110,118 +155,6 @@ describe("getStagePromptConfig", () => {
       const schemaKeys = Object.keys(config.outputSchema);
       expect(schemaKeys.length).toBeGreaterThan(0);
     }
-  });
-
-  it("game-universe-extraction gera prompt com output do game-selection", () => {
-    const config = getStagePromptConfig("game-universe-extraction");
-    const prompt = config.buildUserPrompt({
-      stageKey: "game-universe-extraction",
-      targetId: "col-1",
-      upstreamOutputs: {
-        "game-selection": {
-          content: JSON.stringify({ selectedGames: ["Ark Nova", "Wingspan"] }),
-        },
-      },
-    });
-    expect(prompt).toContain("game-universe-extraction");
-    expect(prompt).toContain("Ark Nova");
-  });
-
-  it("design-concept gera prompt com nome do item e output do game-universe-extraction", () => {
-    const config = getStagePromptConfig("design-concept");
-    const prompt = config.buildUserPrompt({
-      stageKey: "design-concept",
-      targetId: "item-1",
-      designItem: { id: "item-1", name: "Angry Birds Tee", collectionId: "col-1" },
-      upstreamOutputs: {
-        "game-universe-extraction": {
-          content: JSON.stringify({ universes: [{ gameTitle: "Ark Nova" }] }),
-        },
-      },
-    });
-    expect(prompt).toContain("design-concept");
-    expect(prompt).toContain("Angry Birds Tee");
-    expect(prompt).toContain("Ark Nova");
-  });
-
-  it("theme-definition gera prompt com output do design-concept", () => {
-    const config = getStagePromptConfig("theme-definition");
-    const prompt = config.buildUserPrompt({
-      stageKey: "theme-definition",
-      targetId: "item-1",
-      upstreamOutputs: {
-        "design-concept": {
-          content: JSON.stringify({ conceptTitle: "Pixel Warrior" }),
-        },
-      },
-    });
-    expect(prompt).toContain("theme-definition");
-    expect(prompt).toContain("Pixel Warrior");
-  });
-
-  it("visual-style-definition gera prompt com output do theme-definition", () => {
-    const config = getStagePromptConfig("visual-style-definition");
-    const prompt = config.buildUserPrompt({
-      stageKey: "visual-style-definition",
-      targetId: "item-1",
-      upstreamOutputs: {
-        "theme-definition": {
-          content: JSON.stringify({ themeName: "Retro Arcade" }),
-        },
-      },
-    });
-    expect(prompt).toContain("visual-style-definition");
-    expect(prompt).toContain("Retro Arcade");
-  });
-
-  it("copy-generation gera prompt com outputs de theme e visual-style", () => {
-    const config = getStagePromptConfig("copy-generation");
-    const prompt = config.buildUserPrompt({
-      stageKey: "copy-generation",
-      targetId: "item-1",
-      upstreamOutputs: {
-        "theme-definition": { content: JSON.stringify({ themeName: "Cosmic Wars" }) },
-        "visual-style-definition": {
-          content: JSON.stringify({ illustrationStyle: "pixel art" }),
-        },
-      },
-    });
-    expect(prompt).toContain("copy-generation");
-    expect(prompt).toContain("Cosmic Wars");
-    expect(prompt).toContain("pixel art");
-  });
-
-  it("shirt-composition-definition gera prompt com outputs de style e copy", () => {
-    const config = getStagePromptConfig("shirt-composition-definition");
-    const prompt = config.buildUserPrompt({
-      stageKey: "shirt-composition-definition",
-      targetId: "item-1",
-      upstreamOutputs: {
-        "visual-style-definition": {
-          content: JSON.stringify({ illustrationStyle: "vector" }),
-        },
-        "copy-generation": {
-          content: JSON.stringify({ primaryText: "Insert Coin" }),
-        },
-      },
-    });
-    expect(prompt).toContain("shirt-composition-definition");
-    expect(prompt).toContain("Insert Coin");
-  });
-
-  it("production-constraints-definition gera prompt com output de shirt-composition", () => {
-    const config = getStagePromptConfig("production-constraints-definition");
-    const prompt = config.buildUserPrompt({
-      stageKey: "production-constraints-definition",
-      targetId: "item-1",
-      upstreamOutputs: {
-        "shirt-composition-definition": {
-          content: JSON.stringify({ printArea: "full front" }),
-        },
-      },
-    });
-    expect(prompt).toContain("production-constraints-definition");
-    expect(prompt).toContain("full front");
   });
 
   it("visual-variation-generation gera prompt com output do master-prompt-assembly", () => {
@@ -242,12 +175,8 @@ describe("getStagePromptConfig", () => {
   it("buildUserPrompt retorna N/A quando outputs upstream estão ausentes", () => {
     const stages = [
       "game-universe-extraction",
-      "design-concept",
-      "theme-definition",
       "visual-style-definition",
-      "copy-generation",
-      "shirt-composition-definition",
-      "production-constraints-definition",
+      "master-prompt-assembly",
       "visual-variation-generation",
     ];
     for (const key of stages) {

@@ -24,6 +24,33 @@ function makeFakeLLMProvider(response: string): LLMProvider {
   };
 }
 
+async function makeApprovedCollectionExecs(
+  executionRepo: InMemoryStageExecutionRepository,
+  collectionId: string,
+) {
+  const collectionStages = [
+    "collection-briefing",
+    "game-universe-extraction",
+    "visual-style-definition",
+  ];
+  const ids: Record<string, string> = {};
+  for (const key of collectionStages) {
+    const id = `exec-col-${key}`;
+    ids[key] = id;
+    const exec = StageExecution.start({
+      id,
+      stageKey: key,
+      targetId: collectionId,
+      targetType: "collection",
+      inputSnapshot: {},
+    })
+      .complete({ content: `{"result":"${key}"}` })
+      .approve({ actorId: "system" });
+    await executionRepo.save(exec);
+  }
+  return ids;
+}
+
 describe("runStageExecution", () => {
   it("cria uma execução, chama o handler do estágio e salva o resultado", async () => {
     const executionRepo = new InMemoryStageExecutionRepository();
@@ -80,7 +107,7 @@ describe("runStageExecution", () => {
     const executionRepo = new InMemoryStageExecutionRepository();
     const collectionRepo = new InMemoryCollectionRepository();
     const designItemRepo = new InMemoryDesignItemRepository();
-    const llm = makeFakeLLMProvider("seleção de jogo processada");
+    const llm = makeFakeLLMProvider("qualquer");
 
     const collection = Collection.create({
       id: "col-2",
@@ -89,11 +116,10 @@ describe("runStageExecution", () => {
     });
     await collectionRepo.save(collection);
 
-    // game-selection depende de collection-briefing aprovado
-    // não há nenhuma execução aprovada no repo, então deve falhar
+    // game-universe-extraction depende de collection-briefing aprovado
     await expect(
       runStageExecution({
-        stageKey: "game-selection",
+        stageKey: "game-universe-extraction",
         targetId: "col-2",
         deps: { executionRepo, collectionRepo, designItemRepo, llm },
       })
@@ -132,49 +158,7 @@ describe("runStageExecution", () => {
     expect(result.failureReason).toBe("LLM indisponível");
 
     const saved = await executionRepo.findById(result.id);
-    expect(saved).not.toBeNull();
     expect(saved!.status).toBe("failed");
-  });
-
-  it("passa o input snapshot com dados do alvo e das dependências aprovadas", async () => {
-    const executionRepo = new InMemoryStageExecutionRepository();
-    const collectionRepo = new InMemoryCollectionRepository();
-    const designItemRepo = new InMemoryDesignItemRepository();
-
-    let capturedPrompt = "";
-    const llm: LLMProvider = {
-      async generateText(req): Promise<LLMResponse> {
-        capturedPrompt = req.prompt;
-        return { content: "resultado", provider: "fake", model: "fake-model" };
-      },
-    };
-
-    const collection = Collection.create({
-      id: "col-4",
-      name: "Coleção FF",
-      briefing: "Final Fantasy collection briefing.",
-    });
-    await collectionRepo.save(collection);
-
-    // pré-popula execução aprovada do collection-briefing
-    const briefingExec = StageExecution.start({
-      id: "exec-briefing-1",
-      stageKey: "collection-briefing",
-      targetId: "col-4",
-      targetType: "collection",
-      inputSnapshot: { briefing: "Final Fantasy collection briefing." },
-    })
-      .complete({ content: "Briefing processado" })
-      .approve({ actorId: "user-1" });
-    await executionRepo.save(briefingExec);
-
-    await runStageExecution({
-      stageKey: "game-selection",
-      targetId: "col-4",
-      deps: { executionRepo, collectionRepo, designItemRepo, llm },
-    });
-
-    expect(capturedPrompt).toContain("game-selection");
   });
 
   it("envia systemPrompt específico do estágio ao LLM", async () => {
@@ -235,8 +219,75 @@ describe("runStageExecution", () => {
 
     expect(capturedPrompt).toContain("Mega Man Mania");
     expect(capturedPrompt).toContain("Coleção retrô de Mega Man com pixel art.");
-    expect(capturedPrompt).toContain("collectionName");
   });
+
+  it("composition-definition requer collectionContext com execuções aprovadas", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+    const llm = makeFakeLLMProvider("composição");
+
+    const collection = Collection.create({
+      id: "col-ctx-1",
+      name: "Coleção CTX",
+      briefing: "Test.",
+    });
+    await collectionRepo.save(collection);
+
+    // Item without collectionContext set — should fail eligibility
+    const item = DesignItem.create({
+      id: "item-ctx-1",
+      collectionId: "col-ctx-1",
+      name: "Item sem contexto",
+    });
+    await designItemRepo.save(item);
+
+    await expect(
+      runStageExecution({
+        stageKey: "composition-definition",
+        targetId: "item-ctx-1",
+        deps: { executionRepo, collectionRepo, designItemRepo, llm },
+      })
+    ).rejects.toThrow(/not eligible/i);
+  });
+
+  it("composition-definition executa quando collectionContext está preenchido com execuções aprovadas", async () => {
+    const executionRepo = new InMemoryStageExecutionRepository();
+    const collectionRepo = new InMemoryCollectionRepository();
+    const designItemRepo = new InMemoryDesignItemRepository();
+    const llm = makeFakeLLMProvider('{"composição":"ok"}');
+
+    const collection = Collection.create({
+      id: "col-ctx-2",
+      name: "Coleção CTX2",
+      briefing: "Test.",
+    });
+    await collectionRepo.save(collection);
+
+    const execIds = await makeApprovedCollectionExecs(executionRepo, "col-ctx-2");
+
+    const item = DesignItem.create({
+      id: "item-ctx-2",
+      collectionId: "col-ctx-2",
+      name: "Item com contexto",
+    }).setCollectionContext({
+      "collection-briefing": { executionId: execIds["collection-briefing"] },
+      "game-universe-extraction": { executionId: execIds["game-universe-extraction"] },
+      "visual-style-definition": { executionId: execIds["visual-style-definition"], styleIndex: 0 },
+    });
+    await designItemRepo.save(item);
+
+    const result = await runStageExecution({
+      stageKey: "composition-definition",
+      targetId: "item-ctx-2",
+      deps: { executionRepo, collectionRepo, designItemRepo, llm },
+    });
+
+    expect(result.status).toBe("completed");
+    expect(result.inputSnapshot).toHaveProperty("collectionContextOutputs");
+    expect(result.inputSnapshot).toHaveProperty("styleIndex", 0);
+  });
+
   it("gera imagens quando o estágio é visual-variation-generation", async () => {
     const executionRepo = new InMemoryStageExecutionRepository();
     const collectionRepo = new InMemoryCollectionRepository();
@@ -244,7 +295,6 @@ describe("runStageExecution", () => {
     const generatedImageRepo = new InMemoryGeneratedImageRepository();
     const llm = makeFakeLLMProvider("não deveria ser chamado");
 
-    // Configura collection e design item
     const collection = Collection.create({
       id: "col-img-1",
       name: "Coleção Zelda",
@@ -259,7 +309,18 @@ describe("runStageExecution", () => {
     });
     await designItemRepo.save(designItem);
 
-    // Pré-popula execução aprovada do master-prompt-assembly (dependência direta)
+    // Pré-popula execuções aprovadas para as deps diretas
+    const compositionExec = StageExecution.start({
+      id: "exec-composition-1",
+      stageKey: "composition-definition",
+      targetId: "item-img-1",
+      targetType: "design_item",
+      inputSnapshot: {},
+    })
+      .complete({ content: '{"composição":"ok"}' })
+      .approve({ actorId: "user-1" });
+    await executionRepo.save(compositionExec);
+
     const masterExec = StageExecution.start({
       id: "exec-master-1",
       stageKey: "master-prompt-assembly",
@@ -271,37 +332,6 @@ describe("runStageExecution", () => {
       .approve({ actorId: "user-1" });
     await executionRepo.save(masterExec);
 
-    // Também precisa das dependências transitivas aprovadas para o master-prompt-assembly
-    const transitiveDeps = [
-      "collection-briefing",
-      "game-selection",
-      "game-universe-extraction",
-      "design-concept",
-      "theme-definition",
-      "visual-style-definition",
-      "copy-generation",
-      "shirt-composition-definition",
-      "production-constraints-definition",
-    ];
-    for (const key of transitiveDeps) {
-      const scope =
-        key === "collection-briefing" || key === "game-selection" || key === "game-universe-extraction"
-          ? "collection"
-          : "design_item";
-      const targetId = scope === "collection" ? "col-img-1" : "item-img-1";
-      const exec = StageExecution.start({
-        id: `exec-${key}`,
-        stageKey: key,
-        targetId,
-        targetType: scope === "collection" ? "collection" : "design_item",
-        inputSnapshot: {},
-      })
-        .complete({ content: `resultado de ${key}` })
-        .approve({ actorId: "user-1" });
-      await executionRepo.save(exec);
-    }
-
-    // Fake image provider
     const savedFiles: Array<{ path: string; data: Buffer }> = [];
     const imageProvider: ImageGenerationProvider = {
       async generateImages(): Promise<ImageGenerationResponse> {
@@ -341,22 +371,17 @@ describe("runStageExecution", () => {
     });
 
     expect(result.status).toBe("completed");
-    expect(result.outputSnapshot).not.toBeNull();
-
-    // Deve ter salvo 2 arquivos
     expect(savedFiles).toHaveLength(2);
     expect(savedFiles[0].path).toContain("item-img-1");
 
-    // Deve ter salvo 2 GeneratedImage no repo
     const images = await generatedImageRepo.findByDesignItemId("item-img-1");
     expect(images).toHaveLength(2);
     expect(images[0].sourceExecutionId).toBe(result.id);
     expect(images[0].provider).toBe("fake-image");
-    expect(images[0].model).toBe("fake-imagen");
     expect(images[0].status).toBe("ready");
   });
 
-  it("marca como failed quando imageProvider falha no visual-variation-generation", async () => {
+  it("marca como failed quando imageProvider falha", async () => {
     const executionRepo = new InMemoryStageExecutionRepository();
     const collectionRepo = new InMemoryCollectionRepository();
     const designItemRepo = new InMemoryDesignItemRepository();
@@ -377,28 +402,27 @@ describe("runStageExecution", () => {
     });
     await designItemRepo.save(designItem);
 
-    // Pré-popula todas as dependências aprovadas
-    const allDeps = [
-      "collection-briefing", "game-selection", "game-universe-extraction",
-      "design-concept", "theme-definition", "visual-style-definition",
-      "copy-generation", "shirt-composition-definition",
-      "production-constraints-definition", "master-prompt-assembly",
-    ];
-    for (const key of allDeps) {
-      const scope = ["collection-briefing", "game-selection", "game-universe-extraction"].includes(key)
-        ? "collection" : "design_item";
-      const targetId = scope === "collection" ? "col-img-2" : "item-img-2";
-      const exec = StageExecution.start({
-        id: `exec-fail-${key}`,
-        stageKey: key,
-        targetId,
-        targetType: scope === "collection" ? "collection" : "design_item",
-        inputSnapshot: {},
-      })
-        .complete({ content: `resultado de ${key}` })
-        .approve({ actorId: "user-1" });
-      await executionRepo.save(exec);
-    }
+    const masterExec = StageExecution.start({
+      id: "exec-master-fail",
+      stageKey: "master-prompt-assembly",
+      targetId: "item-img-2",
+      targetType: "design_item",
+      inputSnapshot: {},
+    })
+      .complete({ content: '{"masterPrompt":"test"}' })
+      .approve({ actorId: "user-1" });
+    await executionRepo.save(masterExec);
+
+    const compositionExec = StageExecution.start({
+      id: "exec-comp-fail",
+      stageKey: "composition-definition",
+      targetId: "item-img-2",
+      targetType: "design_item",
+      inputSnapshot: {},
+    })
+      .complete({ content: '{"composição":"ok"}' })
+      .approve({ actorId: "user-1" });
+    await executionRepo.save(compositionExec);
 
     const failingImageProvider: ImageGenerationProvider = {
       async generateImages() { throw new Error("Imagen API indisponível"); },

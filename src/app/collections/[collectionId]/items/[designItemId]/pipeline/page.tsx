@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PipelineTimeline } from "@/components/stampforge/PipelineTimeline";
+import { CollectionContextPanel } from "@/components/stampforge/CollectionContextPanel";
 import { designItemRepo } from "@/lib/server/dependencies";
 
 interface PipelinePageProps {
@@ -30,7 +31,13 @@ export default async function PipelinePage({ params }: PipelinePageProps) {
             <h1 className="text-2xl font-bold">{designItem.name}</h1>
             <p className="text-muted-foreground mt-1 text-sm">Pipeline de produção</p>
           </div>
-          <Badge variant="secondary">Item de Design</Badge>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary">Item de Design</Badge>
+            <CollectionContextPanel
+              collectionId={collectionId}
+              designItemId={designItemId}
+            />
+          </div>
         </div>
       </div>
 

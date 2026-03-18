@@ -1,13 +1,30 @@
 import { stageCatalog } from "./stageCatalog";
+import type { CollectionContext } from "../design-items/DesignItem";
 
 export interface IsStageReadyInput {
   stageKey: string;
+  /** Approved same-scope stage keys for the target (collection or design item). */
   approvedStageKeys: string[];
+  /**
+   * Required for design_item stages that declare collectionDependencies.
+   * The DesignItem's collectionContext mapping stage keys to execution entries.
+   */
+  collectionContext?: CollectionContext;
+  /**
+   * Set of approved collection execution IDs.
+   * Used to verify that collectionContext entries reference approved executions.
+   */
+  approvedCollectionExecutionIds?: Set<string>;
 }
 
 /**
  * isStageReady checks whether a stage is eligible to be executed.
- * A stage is ready when all its upstream dependencies have been approved.
+ *
+ * A stage is ready when:
+ * 1. All same-scope upstream dependencies have an approved execution.
+ * 2. All collectionDependencies are satisfied via collectionContext:
+ *    - The entry exists in collectionContext.
+ *    - The referenced execution is in the approved set.
  *
  * Approval is distinct from completion: downstream stages require approved
  * executions, not merely completed ones.
@@ -17,6 +34,8 @@ export interface IsStageReadyInput {
 export function isStageReady({
   stageKey,
   approvedStageKeys,
+  collectionContext = {},
+  approvedCollectionExecutionIds = new Set(),
 }: IsStageReadyInput): boolean {
   const stage = stageCatalog.find((s) => s.key === stageKey);
 
@@ -24,11 +43,19 @@ export function isStageReady({
     throw new Error(`Stage not found in catalog: "${stageKey}"`);
   }
 
-  if (stage.dependencies.length === 0) {
-    return true;
-  }
-
   const approvedSet = new Set(approvedStageKeys);
 
-  return stage.dependencies.every((dep) => approvedSet.has(dep));
+  const sameScopeDepsOk = stage.dependencies.every((dep) =>
+    approvedSet.has(dep),
+  );
+
+  if (!sameScopeDepsOk) return false;
+
+  if (stage.collectionDependencies.length === 0) return true;
+
+  return stage.collectionDependencies.every((depKey) => {
+    const entry = collectionContext[depKey];
+    if (!entry) return false;
+    return approvedCollectionExecutionIds.has(entry.executionId);
+  });
 }

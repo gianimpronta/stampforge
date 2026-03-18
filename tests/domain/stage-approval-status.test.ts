@@ -173,4 +173,43 @@ describe("StageExecution approval flow", () => {
 
     expect(() => execution.fail(new Error("too late"))).toThrow();
   });
+
+  it("stale flow: approved → stale when collectionContext changes", () => {
+    const execution = StageExecution.start({
+      id: "exec-13",
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      targetType: "design_item",
+      inputSnapshot: { collectionContextOutputs: { "collection-briefing": {} } },
+    })
+      .complete({ output: "composition" })
+      .approve({ actorId: "user-1" })
+      .markStale();
+
+    expect(execution.status).toBe("stale");
+  });
+
+  it("guard: cannot mark a running execution as stale", () => {
+    const execution = StageExecution.start({
+      id: "exec-14",
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      targetType: "design_item",
+      inputSnapshot: {},
+    });
+
+    expect(() => execution.markStale()).toThrow();
+  });
+
+  it("guard: cannot mark a completed (not yet approved) execution as stale", () => {
+    const execution = StageExecution.start({
+      id: "exec-15",
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      targetType: "design_item",
+      inputSnapshot: {},
+    }).complete({ output: "done" });
+
+    expect(() => execution.markStale()).toThrow();
+  });
 });

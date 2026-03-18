@@ -17,7 +17,8 @@ export type StageExecutionStatus =
   | "completed"
   | "approved"
   | "rejected"
-  | "failed";
+  | "failed"
+  | "stale";
 
 export interface StageExecutionData {
   id: string;
@@ -51,6 +52,7 @@ export const STATUS_LABELS: Record<StageExecutionStatus, string> = {
   approved: "Aprovado",
   rejected: "Rejeitado",
   failed: "Falhou",
+  stale: "Desatualizado",
 };
 
 export const STATUS_VARIANTS: Record<
@@ -62,6 +64,7 @@ export const STATUS_VARIANTS: Record<
   approved: "default",
   rejected: "destructive",
   failed: "destructive",
+  stale: "outline",
 };
 
 function parseContent(output: Record<string, unknown>): Record<string, unknown> | null {

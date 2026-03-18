@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import { DesignItem } from "../../../domain/design-items/DesignItem";
+import { DesignItem, CollectionContext } from "../../../domain/design-items/DesignItem";
 import { DesignItemRepository } from "../../../domain/design-items/DesignItemRepository";
 
 export class PgDesignItemRepository implements DesignItemRepository {
@@ -7,12 +7,20 @@ export class PgDesignItemRepository implements DesignItemRepository {
 
   async save(item: DesignItem): Promise<void> {
     await this.pool.query(
-      `INSERT INTO design_items (id, collection_id, name, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5)
+      `INSERT INTO design_items (id, collection_id, name, collection_context, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (id) DO UPDATE
          SET name = EXCLUDED.name,
+             collection_context = EXCLUDED.collection_context,
              updated_at = EXCLUDED.updated_at`,
-      [item.id, item.collectionId, item.name, item.createdAt, item.updatedAt],
+      [
+        item.id,
+        item.collectionId,
+        item.name,
+        JSON.stringify(item.collectionContext),
+        item.createdAt,
+        item.updatedAt,
+      ],
     );
   }
 
@@ -37,10 +45,14 @@ export class PgDesignItemRepository implements DesignItemRepository {
   }
 
   private rowToDesignItem(row: Record<string, unknown>): DesignItem {
+    const ctx = row.collection_context;
+    const collectionContext: CollectionContext =
+      ctx && typeof ctx === "object" ? (ctx as CollectionContext) : {};
     return DesignItem.reconstruct({
       id: row.id as string,
       collectionId: row.collection_id as string,
       name: row.name as string,
+      collectionContext,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     });

@@ -30,73 +30,113 @@ export interface RunStageExecutionInput {
 }
 
 /**
- * runStageExecution é o caso de uso central do pipeline.
+ * runStageExecution is the core pipeline use case.
  *
- * Fluxo:
- * 1. Valida que o estágio existe no catálogo
- * 2. Verifica eligibilidade (dependências upstream aprovadas)
- * 3. Coleta input de execuções aprovadas das dependências e do alvo
- * 4. Cria um StageExecution em status "running"
- * 5. Chama o LLM com um prompt contextual
- * 6. Salva a execução como "completed" (sucesso) ou "failed" (erro técnico)
- * 7. Retorna a execução final
+ * Flow:
+ * 1. Validate the stage exists in the catalog
+ * 2. Check eligibility (upstream same-scope deps approved + collectionContext satisfied)
+ * 3. Build the input snapshot (target data + upstream outputs + collection context outputs)
+ * 4. Create a StageExecution in "running" status
+ * 5. Call LLM (or image provider for visual-variation-generation)
+ * 6. Save execution as "completed" (success) or "failed" (technical error)
+ * 7. Return the final execution
  */
 export async function runStageExecution(
   input: RunStageExecutionInput,
 ): Promise<StageExecution> {
   const { stageKey, targetId, deps } = input;
-  const { executionRepo, collectionRepo, designItemRepo, llm } = deps;
+  const { executionRepo, collectionRepo, designItemRepo } = deps;
 
-  // 1. Valida que o estágio existe no catálogo (isStageReady lança erro se não encontrar)
   const stage = stageCatalog.find((s) => s.key === stageKey);
   if (!stage) {
     throw new Error(`Stage not found in catalog: "${stageKey}"`);
   }
 
-  // 2. Coleta execuções aprovadas para o targetId
-  //    Para estágios de design_item, também busca execuções da collection
-  //    (pois dependências upstream podem ser de scope collection).
-  const targetExecutions = await executionRepo.findByTargetId(targetId);
-  let allExecutions = targetExecutions;
-
-  if (stage.scope === "design_item") {
-    const designItem = await designItemRepo.findById(targetId);
-    if (designItem) {
-      const collectionExecutions = await executionRepo.findByTargetId(
-        designItem.collectionId,
-      );
-      allExecutions = [...targetExecutions, ...collectionExecutions];
-    }
-  }
-
-  const approvedStageKeys = allExecutions
-    .filter((e) => e.status === "approved")
-    .map((e) => e.stageKey);
-
-  // 3. Verifica eligibilidade — lança se as dependências não estão aprovadas
-  const ready = isStageReady({ stageKey, approvedStageKeys });
-  if (!ready) {
-    throw new Error(
-      `Stage "${stageKey}" is not eligible: upstream dependencies are not approved. ` +
-        `Missing: ${stage.dependencies.filter((d) => !approvedStageKeys.includes(d)).join(", ")}`,
-    );
-  }
-
-  // 4. Determina o targetType a partir do escopo do estágio
   const targetType: StageTargetType =
     stage.scope === "collection" ? "collection" : "design_item";
 
-  // 5. Monta o inputSnapshot com dados do alvo e outputs das dependências aprovadas
+  // Collect approved executions for same-scope target
+  const targetExecutions = await executionRepo.findByTargetId(targetId);
+  const approvedTargetStageKeys = targetExecutions
+    .filter((e) => e.status === "approved")
+    .map((e) => e.stageKey);
+
+  // For design_item stages, resolve collectionContext
+  let collectionContextOutputs: Record<string, unknown> = {};
+  let approvedCollectionExecutionIds = new Set<string>();
+  let styleIndex: number | undefined;
+
+  if (stage.scope === "design_item") {
+    const designItem = await designItemRepo.findById(targetId);
+    if (!designItem) {
+      throw new Error(`DesignItem not found: "${targetId}"`);
+    }
+
+    const context = designItem.collectionContext;
+
+    for (const [depKey, entry] of Object.entries(context)) {
+      if (!entry) continue;
+      const exec = await executionRepo.findById(entry.executionId);
+      if (exec && exec.status === "approved") {
+        approvedCollectionExecutionIds.add(entry.executionId);
+        if (exec.outputSnapshot) {
+          collectionContextOutputs[depKey] = exec.outputSnapshot;
+          if (depKey === "visual-style-definition" && entry.styleIndex !== undefined) {
+            styleIndex = entry.styleIndex;
+          }
+        }
+      }
+    }
+
+    const ready = isStageReady({
+      stageKey,
+      approvedStageKeys: approvedTargetStageKeys,
+      collectionContext: context,
+      approvedCollectionExecutionIds,
+    });
+
+    if (!ready) {
+      const missingDeps = stage.dependencies.filter(
+        (d) => !approvedTargetStageKeys.includes(d),
+      );
+      const missingCtx = stage.collectionDependencies.filter((d) => {
+        const entry = context[d];
+        return !entry || !approvedCollectionExecutionIds.has(entry.executionId);
+      });
+      const missing = [
+        ...missingDeps,
+        ...missingCtx.map((k) => `collectionContext:${k}`),
+      ];
+      throw new Error(
+        `Stage "${stageKey}" is not eligible: upstream dependencies are not approved. ` +
+          `Missing: ${missing.join(", ")}`,
+      );
+    }
+  } else {
+    const ready = isStageReady({
+      stageKey,
+      approvedStageKeys: approvedTargetStageKeys,
+    });
+
+    if (!ready) {
+      throw new Error(
+        `Stage "${stageKey}" is not eligible: upstream dependencies are not approved. ` +
+          `Missing: ${stage.dependencies.filter((d) => !approvedTargetStageKeys.includes(d)).join(", ")}`,
+      );
+    }
+  }
+
   const inputSnapshot = await buildInputSnapshot({
     stageKey,
     targetId,
     targetType,
-    approvedExecutions: allExecutions.filter((e) => e.status === "approved"),
+    approvedExecutions: targetExecutions.filter((e) => e.status === "approved"),
+    collectionContextOutputs,
+    styleIndex,
     collectionRepo,
     designItemRepo,
   });
 
-  // 6. Cria a execução em status "running"
   const execution = StageExecution.start({
     id: randomUUID(),
     stageKey,
@@ -107,21 +147,15 @@ export async function runStageExecution(
 
   await executionRepo.save(execution);
 
-  // 7. Chama o LLM (ou image provider) e transiciona para "completed" ou "failed"
   const promptConfig = getStagePromptConfig(stageKey);
 
   if (promptConfig.isImageGeneration) {
-    return runImageGeneration({
-      execution,
-      inputSnapshot,
-      targetId,
-      deps,
-    });
+    return runImageGeneration({ execution, inputSnapshot, targetId, deps });
   }
 
   try {
     const userPrompt = promptConfig.buildUserPrompt(inputSnapshot);
-    const response = await llm.generateText({
+    const response = await deps.llm.generateText({
       prompt: userPrompt,
       systemPrompt: promptConfig.systemPrompt,
     });
@@ -146,7 +180,7 @@ export async function runStageExecution(
 }
 
 // ---------------------------------------------------------------------------
-// Helpers internos
+// Helpers
 // ---------------------------------------------------------------------------
 
 interface RunImageGenerationInput {
@@ -166,14 +200,15 @@ async function runImageGeneration({
 
   if (!imageProvider || !storage || !generatedImageRepo) {
     const failed = execution.fail(
-      new Error("Image generation dependencies (imageProvider, storage, generatedImageRepo) are required"),
+      new Error(
+        "Image generation dependencies (imageProvider, storage, generatedImageRepo) are required",
+      ),
     );
     await executionRepo.save(failed);
     return failed;
   }
 
   try {
-    // Extrai o prompt mestre do upstream
     const upstream = inputSnapshot.upstreamOutputs as
       | Record<string, { content?: string }>
       | undefined;
@@ -192,7 +227,12 @@ async function runImageGeneration({
       count: 2,
     });
 
-    const savedImages: Array<{ imageId: string; filePath: string; provider: string; model: string }> = [];
+    const savedImages: Array<{
+      imageId: string;
+      filePath: string;
+      provider: string;
+      model: string;
+    }> = [];
 
     for (let i = 0; i < response.images.length; i++) {
       const { data, mimeType } = response.images[i];
@@ -248,6 +288,8 @@ interface BuildInputSnapshotInput {
   targetId: string;
   targetType: StageTargetType;
   approvedExecutions: StageExecution[];
+  collectionContextOutputs: Record<string, unknown>;
+  styleIndex?: number;
   collectionRepo: CollectionRepository;
   designItemRepo: DesignItemRepository;
 }
@@ -257,18 +299,17 @@ async function buildInputSnapshot({
   targetId,
   targetType,
   approvedExecutions,
+  collectionContextOutputs,
+  styleIndex,
   collectionRepo,
   designItemRepo,
 }: BuildInputSnapshotInput): Promise<Record<string, unknown>> {
   const snapshot: Record<string, unknown> = { stageKey, targetId };
 
-  // Inclui dados do alvo — falha se não encontrar
   if (targetType === "collection") {
     const collection = await collectionRepo.findById(targetId);
     if (!collection) {
-      throw new Error(
-        `Collection not found: "${targetId}". O servidor pode ter reiniciado e perdido os dados in-memory.`,
-      );
+      throw new Error(`Collection not found: "${targetId}"`);
     }
     snapshot.collection = {
       id: collection.id,
@@ -278,20 +319,23 @@ async function buildInputSnapshot({
   } else {
     const designItem = await designItemRepo.findById(targetId);
     if (!designItem) {
-      throw new Error(
-        `DesignItem not found: "${targetId}". O servidor pode ter reiniciado e perdido os dados in-memory.`,
-      );
+      throw new Error(`DesignItem not found: "${targetId}"`);
     }
     snapshot.designItem = {
       id: designItem.id,
       name: designItem.name,
       collectionId: designItem.collectionId,
     };
+    if (Object.keys(collectionContextOutputs).length > 0) {
+      snapshot.collectionContextOutputs = collectionContextOutputs;
+    }
+    if (styleIndex !== undefined) {
+      snapshot.styleIndex = styleIndex;
+    }
   }
 
-  // Inclui outputs das dependências aprovadas
   const stage = stageCatalog.find((s) => s.key === stageKey);
-  if (stage) {
+  if (stage && stage.dependencies.length > 0) {
     const upstreamOutputs: Record<string, unknown> = {};
     for (const depKey of stage.dependencies) {
       const depExec = approvedExecutions.find((e) => e.stageKey === depKey);
@@ -308,8 +352,8 @@ async function buildInputSnapshot({
 }
 
 /**
- * Remove blocos de código markdown (```json ... ```) que o LLM
- * pode retornar mesmo quando instruído a não usar markdown.
+ * Strips markdown code fences (```json ... ```) that the LLM may return
+ * even when instructed not to use markdown.
  */
 export function stripCodeFences(text: string): string {
   const trimmed = text.trim();
@@ -317,4 +361,3 @@ export function stripCodeFences(text: string): string {
   const match = fencePattern.exec(trimmed);
   return match ? match[1].trim() : trimmed;
 }
-
