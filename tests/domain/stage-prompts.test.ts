@@ -185,4 +185,89 @@ describe("getStagePromptConfig", () => {
       expect(prompt).toContain("N/A");
     }
   });
+
+  it("extractUpstreamContent retorna vazio quando content é null/undefined na chave", () => {
+    // Exercita a branch `?? ""` (linha 24): key existe mas content é undefined
+    const config = getStagePromptConfig("game-universe-extraction");
+    const prompt = config.buildUserPrompt({
+      stageKey: "game-universe-extraction",
+      targetId: "col-1",
+      upstreamOutputs: {
+        "collection-briefing": { content: undefined },
+      },
+    });
+    // Sem content válido, deve cair no "N/A"
+    expect(prompt).toContain("N/A");
+  });
+
+  it("extractCollectionContextContent retorna conteúdo quando presente", () => {
+    // Exercita extractCollectionContextContent com dados reais (linhas 35-54)
+    const config = getStagePromptConfig("composition-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      designItem: { id: "item-1", name: "Test Item", collectionId: "col-1" },
+      styleIndex: 0,
+      collectionContextOutputs: {
+        "collection-briefing": { content: '{"interpretedTheme":"Arcade Nostalgia"}' },
+        "game-universe-extraction": { content: '{"universes":[{"gameTitle":"Pac-Man"}]}' },
+        "visual-style-definition": { content: '{"styles":[{"styleName":"Pixel Retro"}]}' },
+      },
+    });
+    expect(prompt).toContain("Arcade Nostalgia");
+    expect(prompt).toContain("Pac-Man");
+    expect(prompt).toContain("Pixel Retro");
+  });
+
+  it("extractCollectionContextContent retorna vazio quando content é undefined na chave", () => {
+    // Exercita o branch do if(!ctx?.[stageKey]?.content) quando key existe mas content é undefined
+    const config = getStagePromptConfig("composition-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      designItem: { id: "item-1", name: "Test Item", collectionId: "col-1" },
+      collectionContextOutputs: {
+        "collection-briefing": { content: undefined },
+        "game-universe-extraction": { content: undefined },
+        "visual-style-definition": { content: undefined },
+      },
+    });
+    expect(prompt).toContain("N/A");
+  });
+
+  it("composition-definition exibe N/A para item quando designItem é null", () => {
+    // Exercita `item?.name ?? "N/A"` (linha 191)
+    const config = getStagePromptConfig("composition-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      designItem: null,
+      collectionContextOutputs: {},
+    });
+    expect(prompt).toContain("N/A");
+  });
+
+  it("composition-definition exibe N/A para styleIndex quando não fornecido", () => {
+    // Exercita `styleIndex ?? "N/A"` (linha 199)
+    const config = getStagePromptConfig("composition-definition");
+    const prompt = config.buildUserPrompt({
+      stageKey: "composition-definition",
+      targetId: "item-1",
+      designItem: { id: "item-1", name: "Test", collectionId: "col-1" },
+      // styleIndex não fornecido
+      collectionContextOutputs: {},
+    });
+    expect(prompt).toContain("índice N/A");
+  });
+
+  it("collection-briefing exibe N/A quando collection é null", () => {
+    // Exercita o `col?.name ?? "N/A"` e `col?.briefing ?? "N/A"` quando collection é null
+    const config = getStagePromptConfig("collection-briefing");
+    const prompt = config.buildUserPrompt({
+      stageKey: "collection-briefing",
+      targetId: "col-1",
+      collection: null,
+    });
+    expect(prompt).toContain("N/A");
+  });
 });

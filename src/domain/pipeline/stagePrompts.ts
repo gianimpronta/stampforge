@@ -21,7 +21,7 @@ function extractUpstreamContent(
     | Record<string, { content?: string }>
     | undefined;
   if (!upstream?.[stageKey]?.content) return "";
-  return upstream[stageKey].content ?? "";
+  return upstream[stageKey].content as string;
 }
 
 function extractCollectionContextContent(
@@ -32,7 +32,7 @@ function extractCollectionContextContent(
     | Record<string, { content?: string }>
     | undefined;
   if (!ctx?.[stageKey]?.content) return "";
-  return ctx[stageKey].content ?? "";
+  return ctx[stageKey].content as string;
 }
 
 const configs: Record<string, StagePromptConfig> = {
