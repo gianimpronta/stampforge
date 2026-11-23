@@ -59,21 +59,23 @@ export function ImageGallery({ designItemId, collectionId }: ImageGalleryProps) 
   const [generatePrompt, setGeneratePrompt] = useState("");
   const [generateError, setGenerateError] = useState<string | null>(null);
 
-  const fetchImages = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/design-items/${designItemId}/images`);
-      if (!res.ok) throw new Error("Falha ao carregar imagens");
-      const data: GeneratedImageData[] = await res.json();
-      setImages(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
-    } finally {
-      setLoading(false);
-    }
-  }, [designItemId]);
+  const fetchImages = useCallback(
+    () =>
+      fetch(`/api/design-items/${designItemId}/images`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Falha ao carregar imagens");
+          return res.json() as Promise<GeneratedImageData[]>;
+        })
+        .then((data) => setImages(data))
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : "Erro desconhecido"),
+        )
+        .finally(() => setLoading(false)),
+    [designItemId],
+  );
 
   useEffect(() => {
-    fetchImages();
+    void fetchImages();
   }, [fetchImages]);
 
   async function handleGenerate() {

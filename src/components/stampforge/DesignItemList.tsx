@@ -41,23 +41,23 @@ export function DesignItemList({ collectionId }: DesignItemListProps) {
   const [name, setName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchItems = useCallback(async () => {
-    try {
-      const res = await fetch(
-        `/api/collections/${collectionId}/design-items`,
-      );
-      if (!res.ok) throw new Error("Falha ao carregar itens");
-      const data = await res.json();
-      setItems(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
-    } finally {
-      setLoading(false);
-    }
-  }, [collectionId]);
+  const fetchItems = useCallback(
+    () =>
+      fetch(`/api/collections/${collectionId}/design-items`)
+        .then((res) => {
+          if (!res.ok) throw new Error("Falha ao carregar itens");
+          return res.json();
+        })
+        .then((data) => setItems(data))
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : "Erro desconhecido"),
+        )
+        .finally(() => setLoading(false)),
+    [collectionId],
+  );
 
   useEffect(() => {
-    fetchItems();
+    void fetchItems();
   }, [fetchItems]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {

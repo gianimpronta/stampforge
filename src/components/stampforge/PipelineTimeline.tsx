@@ -25,6 +25,33 @@ interface PipelineTimelineProps {
   readonly collectionId: string;
 }
 
+async function loadTimeline(
+  designItemId: string,
+  collectionId: string,
+): Promise<{ catalog: CatalogStage[]; executions: StageExecutionData[] }> {
+  const [catalogRes, itemTimelineRes, collectionTimelineRes] =
+    await Promise.all([
+      fetch("/api/pipeline/stages"),
+      fetch(`/api/pipeline/timeline/${designItemId}`),
+      fetch(`/api/pipeline/timeline/${collectionId}`),
+    ]);
+
+  if (!catalogRes.ok) throw new Error("Falha ao carregar catálogo");
+  if (!itemTimelineRes.ok) throw new Error("Falha ao carregar timeline do item");
+  if (!collectionTimelineRes.ok)
+    throw new Error("Falha ao carregar timeline da coleção");
+
+  const catalogData: CatalogStage[] = await catalogRes.json();
+  const itemExecs: StageExecutionData[] = await itemTimelineRes.json();
+  const collectionExecs: StageExecutionData[] =
+    await collectionTimelineRes.json();
+
+  return {
+    catalog: catalogData.toSorted((a, b) => a.order - b.order),
+    executions: [...collectionExecs, ...itemExecs],
+  };
+}
+
 export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelineProps) {
   const [catalog, setCatalog] = useState<CatalogStage[]>([]);
   const [executions, setExecutions] = useState<StageExecutionData[]>([]);
@@ -37,36 +64,22 @@ export function PipelineTimeline({ designItemId, collectionId }: PipelineTimelin
   const [selectedStageName, setSelectedStageName] = useState<string>("");
   const [panelOpen, setPanelOpen] = useState(false);
 
-  const fetchData = useCallback(async () => {
-    try {
-      const [catalogRes, itemTimelineRes, collectionTimelineRes] =
-        await Promise.all([
-          fetch("/api/pipeline/stages"),
-          fetch(`/api/pipeline/timeline/${designItemId}`),
-          fetch(`/api/pipeline/timeline/${collectionId}`),
-        ]);
-
-      if (!catalogRes.ok) throw new Error("Falha ao carregar catálogo");
-      if (!itemTimelineRes.ok) throw new Error("Falha ao carregar timeline do item");
-      if (!collectionTimelineRes.ok)
-        throw new Error("Falha ao carregar timeline da coleção");
-
-      const catalogData: CatalogStage[] = await catalogRes.json();
-      const itemExecs: StageExecutionData[] = await itemTimelineRes.json();
-      const collectionExecs: StageExecutionData[] =
-        await collectionTimelineRes.json();
-
-      setCatalog(catalogData.toSorted((a, b) => a.order - b.order));
-      setExecutions([...collectionExecs, ...itemExecs]);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
-    } finally {
-      setLoading(false);
-    }
-  }, [designItemId, collectionId]);
+  const fetchData = useCallback(
+    () =>
+      loadTimeline(designItemId, collectionId)
+        .then((data) => {
+          setCatalog(data.catalog);
+          setExecutions(data.executions);
+        })
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : "Erro desconhecido"),
+        )
+        .finally(() => setLoading(false)),
+    [designItemId, collectionId],
+  );
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, [fetchData]);
 
   function getLatestExecutionForStage(
