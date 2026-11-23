@@ -35,21 +35,23 @@ export function CollectionList() {
   const [briefing, setBriefing] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
 
-  const fetchCollections = useCallback(async () => {
-    try {
-      const res = await fetch("/api/collections");
-      if (!res.ok) throw new Error("Falha ao carregar coleções");
-      const data = await res.json();
-      setCollections(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro desconhecido");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const fetchCollections = useCallback(
+    () =>
+      fetch("/api/collections")
+        .then((res) => {
+          if (!res.ok) throw new Error("Falha ao carregar coleções");
+          return res.json();
+        })
+        .then((data) => setCollections(data))
+        .catch((err: unknown) =>
+          setError(err instanceof Error ? err.message : "Erro desconhecido"),
+        )
+        .finally(() => setLoading(false)),
+    [],
+  );
 
   useEffect(() => {
-    fetchCollections();
+    void fetchCollections();
   }, [fetchCollections]);
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
