@@ -23,6 +23,7 @@ export default defineConfig({
         "src/server/jobs/queues.ts",
         "src/server/jobs/worker.ts",
         "src/server/jobs/handlers/**",
+        "**/*.sql",
         "node_modules/**",
       ],
       thresholds: {
